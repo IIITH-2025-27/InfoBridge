@@ -1,0 +1,187 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper, margin=1in]{geometry}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{graphicx}
+
+\title{\textbf{Product Requirements Document (PRD)}\\
+InfoBridge: Smart Access to Public Services}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Abstract}
+Accessing government service information is often challenging due to unstructured and lengthy documentation. This project presents InfoBridge, a Retrieval-Augmented Generation (RAG) based chatbot that retrieves relevant information from official government PDFs and generates accurate, source-backed responses. The system aims to improve accessibility, reduce user effort, and provide reliable answers in a conversational interface.
+
+\section{Introduction}
+Government services such as passport application, voter registration, and taxation involve extensive documentation. Users often struggle to navigate these documents and extract relevant information efficiently. This project addresses the problem by building an AI-powered chatbot that enables users to query government services and receive precise, context-aware answers.
+
+\section{Objectives}
+\begin{itemize}
+    \item Develop a chatbot for querying government service information.
+    \item Implement a RAG-based pipeline for accurate answer generation.
+    \item Provide source-backed responses to ensure reliability.
+    \item Improve accessibility through a user-friendly interface.
+\end{itemize}
+
+\section{Scope}
+\textbf{Included Services:}
+\begin{itemize}
+    \item Passport services
+    \item Voter ID services
+    \item Driving Licence
+    \item Income Tax
+    \item Ayushman Bharat
+\end{itemize}
+
+\textbf{Out of Scope:}
+\begin{itemize}
+    \item Real-time API integration
+    \item User authentication
+    \item Transaction processing
+\end{itemize}
+
+\section{System Overview}
+The system follows a Retrieval-Augmented Generation (RAG) pipeline:
+\begin{enumerate}
+    \item Collect government PDFs
+    \item Extract and preprocess text
+    \item Split text into chunks
+    \item Generate embeddings
+    \item Store embeddings in vector database
+    \item Retrieve relevant chunks for query
+    \item Generate response using LLM
+\end{enumerate}
+
+\section{System Architecture}
+\begin{verbatim}
+PDFs → Text → Chunks → Embeddings → Vector DB
+                                      ↓
+User Query → Embedding → Retrieval → LLM → Answer + Sources
+\end{verbatim}
+
+\section{Dataset Description}
+The dataset consists of official government PDF documents collected from public portals. Approximately 20--40 PDFs are used across multiple services. Each document is processed into smaller text chunks (300--500 words) with metadata including source and service type.
+
+\section{Methodology}
+
+\subsection{Data Preprocessing}
+\begin{itemize}
+    \item Extract text using PyPDF2
+    \item Remove noise such as headers and footers
+    \item Split text into overlapping chunks
+\end{itemize}
+
+\subsection{Embedding Generation}
+\begin{itemize}
+    \item Model: Sentence Transformers (MiniLM)
+    \item Convert text chunks into vector embeddings
+\end{itemize}
+
+\subsection{Vector Storage}
+\begin{itemize}
+    \item Store embeddings using FAISS
+    \item Enable fast similarity search
+\end{itemize}
+
+\subsection{Query Processing}
+\begin{itemize}
+    \item Convert user query into embedding
+    \item Retrieve top-k similar chunks
+\end{itemize}
+
+\subsection{Answer Generation}
+\begin{itemize}
+    \item Use Gemini API for response generation
+    \item Provide context-aware answers
+    \item Restrict responses to retrieved content
+\end{itemize}
+
+\section{Functional Requirements}
+\begin{itemize}
+    \item Accept user queries through chat interface
+    \item Retrieve relevant document segments
+    \item Generate accurate responses using LLM
+    \item Display source references
+    \item Support multi-service queries
+    \item Optional: Language toggle (English/Hindi)
+\end{itemize}
+
+\section{Non-Functional Requirements}
+\begin{itemize}
+    \item Response latency $<$ 3 seconds
+    \item High accuracy and reliability
+    \item Scalable architecture
+    \item User-friendly interface
+\end{itemize}
+
+\section{Evaluation Metrics}
+\begin{itemize}
+    \item \textbf{Accuracy:} Correctness of responses
+    \item \textbf{Relevance:} Quality of retrieved documents
+    \item \textbf{Latency:} Response time
+    \item \textbf{User Satisfaction:} Feedback-based evaluation
+\end{itemize}
+
+\section{Technology Stack}
+\begin{itemize}
+    \item Frontend: Streamlit
+    \item Backend: Python
+    \item Embeddings: Sentence Transformers (MiniLM)
+    \item Vector DB: FAISS
+    \item LLM: Gemini API
+    \item PDF Parsing: PyPDF2
+\end{itemize}
+
+\section{Workflow}
+\subsection{Data Preparation}
+Collect and preprocess PDF documents.
+
+\subsection{Embedding Pipeline}
+Generate embeddings and store in vector database.
+
+\subsection{Query Pipeline}
+Retrieve relevant chunks based on user query.
+
+\subsection{Response Generation}
+Generate final answer with LLM.
+
+\section{Team Responsibilities}
+\begin{itemize}
+    \item Data Team: Data collection and preprocessing
+    \item Backend Team: Embeddings and retrieval
+    \item LLM Team: Prompt engineering
+    \item Frontend Team: UI development
+\end{itemize}
+
+\section{Timeline}
+\begin{itemize}
+    \item Day 1: Data collection
+    \item Day 2: Embeddings and retrieval
+    \item Day 3: LLM integration
+    \item Day 4: UI and testing
+\end{itemize}
+
+\section{Challenges}
+\begin{itemize}
+    \item Handling noisy PDF data
+    \item Avoiding hallucinations
+    \item Ensuring relevant retrieval
+\end{itemize}
+
+\section{Future Work}
+\begin{itemize}
+    \item Multi-language support
+    \item Voice-based interaction
+    \item Mobile deployment
+    \item Integration with APIs
+\end{itemize}
+
+\section{Conclusion}
+InfoBridge demonstrates an effective application of RAG systems for improving access to government services. It enables users to interact with complex documents through a simple conversational interface, ensuring accuracy and reliability.
+
+\end{document}
