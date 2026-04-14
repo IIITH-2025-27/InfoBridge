@@ -1,0 +1,2 @@
+# InfoBridge
+SMAI - Project
