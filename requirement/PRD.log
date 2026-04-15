@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999993 (TeX Live 2022/dev/Debian) (preloaded format=xelatex 2026.3.5)  14 APR 2026 21:34
+This is XeTeX, Version 3.141592653-2.6-0.999993 (TeX Live 2022/dev/Debian) (preloaded format=xelatex 2026.3.5)  15 APR 2026 09:52
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -287,9 +287,15 @@ LaTeX Warning: No \author given.
 ] [2]
 LaTeX Font Info:    External font `cmex10' loaded for size
 (Font)              <10.95> on input line 116.
- [3] [4] [5] (./PRD.aux)
-Package rerunfilecheck Info: File `PRD.out' has not changed.
-(rerunfilecheck)             Checksum: C3F2679AB2C62C950C9388F47F37D45B;3391.
+ [3] [4] [5] [6] [7] (./PRD.aux)
+
+Package rerunfilecheck Warning: File `PRD.out' has changed.
+(rerunfilecheck)                Rerun to get outlines right
+(rerunfilecheck)                or use package `bookmark'.
+
+Package rerunfilecheck Info: Checksums for `PRD.out':
+(rerunfilecheck)             Before: C3F2679AB2C62C950C9388F47F37D45B;3391
+(rerunfilecheck)             After:  4F45EA0290D696FCB50F3FBFD14BBF06;4735.
  ) 
 Here is how much of TeX's memory you used:
  9059 strings out of 478190
@@ -298,6 +304,6 @@ Here is how much of TeX's memory you used:
  29571 multiletter control sequences out of 15000+600000
  473343 words of font info for 50 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 60i,6n,64p,513b,423s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 60i,6n,64p,513b,537s stack positions out of 5000i,500n,10000p,200000b,80000s
 
-Output written on PRD.pdf (5 pages).
+Output written on PRD.pdf (7 pages).

@@ -158,6 +158,190 @@ Generate final answer with LLM.
     \item Frontend Team: UI development
 \end{itemize}
 
+\section{Detailed Team Responsibilities and Execution Plan}
+
+\subsection{Data Team (2 Members)}
+\textbf{Objective:} Collect and preprocess dataset from government PDFs.
+
+\textbf{Tasks:}
+\begin{enumerate}
+    \item Identify and download official PDFs from government portals:
+    \begin{itemize}
+        \item Passport (passportindia.gov.in)
+        \item Voter ID (eci.gov.in)
+        \item Driving Licence (parivahan.gov.in)
+        \item Income Tax (incometax.gov.in)
+        \item Ayushman Bharat (nha.gov.in)
+    \end{itemize}
+    
+    \item Organize files into structured folders:
+    \begin{verbatim}
+data/passport/
+data/voter/
+data/driving/
+data/tax/
+data/health/
+    \end{verbatim}
+
+    \item Extract text from PDFs using PyPDF2.
+
+    \item Clean extracted text:
+    \begin{itemize}
+        \item Remove headers, footers, and page numbers
+        \item Remove unnecessary symbols and formatting issues
+    \end{itemize}
+
+    \item Validate extracted text quality.
+
+\end{enumerate}
+
+\textbf{Output:} Clean text data ready for chunking.
+
+---
+
+\subsection{Backend Team (2 Members)}
+\textbf{Objective:} Build embedding and retrieval pipeline.
+
+\textbf{Tasks:}
+\begin{enumerate}
+    \item Implement text chunking:
+    \begin{itemize}
+        \item Chunk size: 300--500 words
+        \item Overlap: 50 words
+    \end{itemize}
+
+    \item Add metadata to each chunk:
+    \begin{itemize}
+        \item Source file name
+        \item Service type
+    \end{itemize}
+
+    \item Generate embeddings using Sentence Transformers (MiniLM).
+
+    \item Store embeddings in FAISS vector database.
+
+    \item Implement retrieval function:
+    \begin{itemize}
+        \item Convert query to embedding
+        \item Retrieve top-k relevant chunks
+    \end{itemize}
+
+    \item Optimize retrieval performance (tune k value).
+
+\end{enumerate}
+
+\textbf{Output:} Working retrieval pipeline.
+
+---
+
+\subsection{LLM Team (1--2 Members)}
+\textbf{Objective:} Generate accurate responses using LLM.
+
+\textbf{Tasks:}
+\begin{enumerate}
+    \item Integrate Gemini (or Llama) API.
+
+    \item Design prompt template:
+    \begin{itemize}
+        \item Restrict answers to provided context
+        \item Handle missing information cases
+    \end{itemize}
+
+    \item Implement response generation:
+    \begin{itemize}
+        \item Combine retrieved chunks into context
+        \item Generate answer using LLM
+    \end{itemize}
+
+    \item Add formatting:
+    \begin{itemize}
+        \item Clear answer structure
+        \item Bullet points for readability
+    \end{itemize}
+
+    \item Implement optional features:
+    \begin{itemize}
+        \item Language toggle (English/Hindi)
+        \item Error handling for empty responses
+    \end{itemize}
+
+\end{enumerate}
+
+\textbf{Output:} Context-aware answer generation module.
+
+---
+
+\subsection{Frontend Team (1--2 Members)}
+\textbf{Objective:} Build user interface and integrate system.
+
+\textbf{Tasks:}
+\begin{enumerate}
+    \item Develop Streamlit-based chat interface:
+    \begin{itemize}
+        \item Input box for user queries
+        \item Display chatbot responses
+    \end{itemize}
+
+    \item Display retrieved sources:
+    \begin{itemize}
+        \item Show document names
+        \item Optional: highlight relevant text
+    \end{itemize}
+
+    \item Implement chat history:
+    \begin{itemize}
+        \item Store previous queries and responses
+    \end{itemize}
+
+    \item Add UI enhancements:
+    \begin{itemize}
+        \item Clean layout
+        \item Responsive design
+    \end{itemize}
+
+    \item Integrate backend and LLM pipeline:
+    \begin{itemize}
+        \item Connect query input to retrieval function
+        \item Display generated answers
+    \end{itemize}
+
+\end{enumerate}
+
+\textbf{Output:} Fully functional web application.
+
+---
+
+\subsection{Integration and Testing (All Members)}
+
+\textbf{Tasks:}
+\begin{enumerate}
+    \item Integrate all modules:
+    \begin{itemize}
+        \item UI → Retrieval → LLM → Output
+    \end{itemize}
+
+    \item Perform testing:
+    \begin{itemize}
+        \item Test queries from all services
+        \item Validate accuracy and relevance
+    \end{itemize}
+
+    \item Debug issues:
+    \begin{itemize}
+        \item Fix incorrect retrieval
+        \item Improve prompt design
+    \end{itemize}
+
+    \item Optimize performance:
+    \begin{itemize}
+        \item Reduce latency
+        \item Improve response clarity
+    \end{itemize}
+
+\end{enumerate}
+
+\textbf{Output:} Final working system ready for deployment.
+
 \section{Timeline}
 \begin{itemize}
     \item Day 1: Data collection
@@ -185,3 +369,4 @@ Generate final answer with LLM.
 InfoBridge demonstrates an effective application of RAG systems for improving access to government services. It enables users to interact with complex documents through a simple conversational interface, ensuring accuracy and reliability.
 
 \end{document}
+
