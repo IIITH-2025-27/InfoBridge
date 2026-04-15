@@ -13,16 +13,16 @@ git checkout -b vikash
 
 ## 🔹 2. Always Sync Before You Start Working
 
-Before writing any code, sync your personal branch with the latest master branch.
+Before writing any code, sync your personal branch with the latest main branch.
 
 ```bash
-git checkout master
-git pull origin master
+git checkout main
+git pull origin main
 git checkout <your-name>
-git merge master
+git merge main
 ```
 
-This brings all the latest changes from master into your branch, ensuring you're working on up-to-date code.
+This brings all the latest changes from main into your branch, ensuring you're working on up-to-date code.
 
 ## 🔹 3. Do All Work in Your Own Branch
 
@@ -42,9 +42,9 @@ Push your branch so the team can review your work.
 git push origin <your-name>
 ```
 
-## 🔹 5. Merge to Master Only After Testing
+## 🔹 5. Merge to main Only After Testing
 
-Your branch can be merged to master ONLY when:
+Your branch can be merged to main ONLY when:
 
 - All changes are tested
 - Code is stable
@@ -61,7 +61,7 @@ Your branch can be merged to master ONLY when:
 3. Click on "Pull Requests" -> "New Pull Request"
 
 4. Select:
-   - Base branch: `master`
+   - Base branch: `main`
    - Compare branch: `<your-name>`
 
 5. Add a descriptive title and description of your changes
@@ -70,23 +70,23 @@ Your branch can be merged to master ONLY when:
 
 ## � 6. After a PR is Merged
 
-Once any team member's PR is merged to master, **everyone** should sync their branches:
+Once any team member's PR is merged to main, **everyone** should sync their branches:
 
 ```bash
-git checkout master
-git pull origin master
+git checkout main
+git pull origin main
 git checkout <your-name>
-git merge master
+git merge main
 ```
 
 This keeps all branches up-to-date and reduces future conflicts.
 
 ## 🔹 7. Handling Merge Conflicts
 
-If you get conflicts when merging master into your branch:
+If you get conflicts when merging main into your branch:
 
 ```bash
-# After running: git merge master
+# After running: git merge main
 # If conflicts occur:
 git status                    # See conflicted files
 # Open each file and resolve conflicts manually
@@ -101,8 +101,8 @@ git commit -m "Resolved merge conflicts"
 
 ## �🚫 Important Rules
 
-- ❌ Never work directly on master(except for Abhay)
+- ❌ Never work directly on main(except for Abhay)
 - ❌ Never merge unfinished work
 - ✅ Always sync your branch before starting work
-- ❌ No force pushes on master
-- ✅ Sync after any PR is merged to master
+- ❌ No force pushes on main
+- ✅ Sync after any PR is merged to main
