@@ -131,9 +131,6 @@ streamlit run app.py
 - **Latency**: Optimized for < 3 second response time
 - **Source Transparency**: Every response includes document citations
 
-## 👥 Team
-
-Built as part of SMAI Assignment 3 at IIIT Hyderabad.
 
 ## 🙏 Acknowledgements
 
