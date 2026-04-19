@@ -66,7 +66,14 @@ METADATA_FILE = VECTORSTORE_DIR / "metadata.pkl"
 
 # ─── Gemini LLM Configuration ───────────────────────────────────────────────
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
-GEMINI_MODEL = "gemini-1.5-flash"
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+GEMINI_FALLBACK_MODELS = [
+    model.strip()
+    for model in os.getenv(
+        "GEMINI_FALLBACK_MODELS", "gemini-2.0-flash-lite,gemini-1.5-flash"
+    ).split(",")
+    if model.strip()
+]
 GEMINI_TEMPERATURE = 0.3
 GEMINI_MAX_OUTPUT_TOKENS = 2048
 

@@ -36,6 +36,51 @@ class ResponseGenerator:
         self.gemini = gemini_client or GeminiClient()
         self.memory = memory or ChatMemory()
 
+    @staticmethod
+    def _llm_unavailable(answer: str) -> bool:
+        lower = answer.lower()
+        return (
+            "quota is exhausted" in lower
+            or "model configuration issue" in lower
+            or "encountered an error while generating" in lower
+        )
+
+    @staticmethod
+    def _build_retrieval_fallback(results: list[dict], language: str) -> str:
+        if not results:
+            if language == "hi":
+                return (
+                    "अभी AI उत्तर उपलब्ध नहीं है और दस्तावेज़ों में पर्याप्त मिलान नहीं मिला। "
+                    "कृपया प्रश्न को थोड़ा स्पष्ट करके फिर पूछें।"
+                )
+            return (
+                "AI response generation is temporarily unavailable, and no strong document match was found. "
+                "Please rephrase your question and try again."
+            )
+
+        max_snippets = min(3, len(results))
+
+        if language == "hi":
+            lines = [
+                "AI उत्तर फिलहाल उपलब्ध नहीं है, इसलिए नीचे दस्तावेज़ों से सीधे सबसे प्रासंगिक जानकारी दी जा रही है:",
+            ]
+            snippet_label = "अंश"
+        else:
+            lines = [
+                "AI response generation is temporarily unavailable, so here is the most relevant information directly from the documents:",
+            ]
+            snippet_label = "Snippet"
+
+        for i in range(max_snippets):
+            result = results[i]
+            source = result["metadata"].get("source_file", "Unknown")
+            service = result["metadata"].get("service_type", "Unknown")
+            excerpt = " ".join(result["text"].split())
+            excerpt = excerpt[:420] + ("..." if len(excerpt) > 420 else "")
+            lines.append(f"\n{snippet_label} {i + 1} ({source} | {service}):\n{excerpt}")
+
+        return "\n".join(lines)
+
     def generate(
         self,
         query: str,
@@ -93,7 +138,7 @@ class ResponseGenerator:
         )
 
         # If Hindi is requested but the answer is not, retry with a stronger hint
-        if language == "hi":
+        if language == "hi" and not self._llm_unavailable(answer):
             devanagari_chars = sum(1 for ch in answer if "\u0900" <= ch <= "\u097F")
             total_letters = sum(1 for ch in answer if ch.isalpha())
             devanagari_ratio = devanagari_chars / max(total_letters, 1)
@@ -103,6 +148,9 @@ class ResponseGenerator:
                     prompt=prompt,
                     system_instruction=retry_instruction,
                 )
+
+        if self._llm_unavailable(answer):
+            answer = self._build_retrieval_fallback(results=results, language=language)
 
         # Ensure answers always include deterministic citations
         if citations:

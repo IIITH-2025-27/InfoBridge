@@ -7,10 +7,11 @@ InfoBridge is a Retrieval-Augmented Generation (RAG) chatbot that answers questi
 ## ✨ Features
 
 - 🔍 **RAG Pipeline** — Retrieves relevant information from official government PDFs
-- 🤖 **Gemini AI** — Powered by Google Gemini 1.5 Flash for accurate responses
+- 🤖 **Gemini AI** — Powered by Google Gemini 2.0 Flash for accurate responses
 - 🌐 **Hindi Support** — Language toggle for English and Hindi responses
 - 💬 **Conversation Memory** — Context-aware follow-up questions
 - 📎 **Source Citations** — Every answer comes with document references
+- 🛟 **Graceful Fallback** — Shows retrieval-based, cited snippets when LLM quota/model issues occur
 - 🗂️ **Multi-Service** — Covers 5 government services:
   - 🛂 Passport Services
   - 🗳️ Voter ID / EPIC
@@ -84,6 +85,8 @@ pip install -r requirements.txt
 ```bash
 cp .env.example .env
 # Edit .env and add your Google AI Studio API key
+# Optional: set GEMINI_MODEL (default is gemini-2.0-flash)
+# Optional: set GEMINI_FALLBACK_MODELS for automatic model retry
 # Get one free at: https://aistudio.google.com/app/apikey
 ```
 
@@ -120,7 +123,7 @@ streamlit run app.py
 | Backend         | Python                                |
 | Embeddings      | sentence-transformers/all-MiniLM-L6-v2|
 | Vector Store    | FAISS (faiss-cpu)                     |
-| LLM             | Google Gemini 1.5 Flash               |
+| LLM             | Google Gemini 2.0 Flash               |
 | PDF Parsing     | PyPDF2                                |
 | Text Splitting  | LangChain Text Splitters              |
 

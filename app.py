@@ -90,10 +90,50 @@ st.markdown("""
     /* Sidebar styling */
     section[data-testid="stSidebar"] {
         background: linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%);
+        color: #1f2937;
+    }
+    section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1,
+    section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2,
+    section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3,
+    section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h4,
+    section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h5,
+    section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h6,
+    section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+    section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] li,
+    section[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+    section[data-testid="stSidebar"] label,
+    section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label p,
+    section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] > div {
+        color: #1f2937 !important;
     }
     section[data-testid="stSidebar"] .stMarkdown h3 {
         color: #1a237e;
         font-size: 1rem;
+    }
+    section[data-testid="stSidebar"] .stSelectbox div[data-baseweb="select"] > div {
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 10px !important;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    }
+    section[data-testid="stSidebar"] .stSelectbox svg {
+        fill: #334155 !important;
+    }
+    section[data-testid="stSidebar"] .stButton > button {
+        background: #ffffff !important;
+        color: #0f172a !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 10px !important;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    }
+    section[data-testid="stSidebar"] .stButton > button:hover {
+        background: #f8fafc !important;
+        border-color: #94a3b8 !important;
+        color: #0f172a !important;
+    }
+    section[data-testid="stSidebar"] .stButton > button:focus {
+        outline: 2px solid #93c5fd !important;
+        outline-offset: 1px;
     }
 
     /* Chat message improvements */
@@ -258,7 +298,7 @@ def render_sidebar():
         st.divider()
         st.caption(
             "Built with ❤️ using RAG pipeline.\n\n"
-            "**Tech Stack:** MiniLM embeddings, FAISS, Gemini 1.5 Flash, Streamlit"
+            "**Tech Stack:** MiniLM embeddings, FAISS, Gemini 2.0 Flash, Streamlit"
         )
 
 
