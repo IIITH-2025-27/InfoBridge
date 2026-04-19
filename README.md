@@ -56,7 +56,7 @@ InfoBridge/
 └── .env.example
 ```
 
-## 🚀 Quick Start
+##  Quick Start
 
 > **⚠️ All commands should be run inside a virtual environment.**
 
