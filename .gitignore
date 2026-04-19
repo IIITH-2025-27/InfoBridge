@@ -1,5 +1,5 @@
 # InfoBridge data
-vectorstore_data/
+# vectorstore_data/
 *.pyc
 __pycache__/
 .env
