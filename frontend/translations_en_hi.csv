@@ -1,0 +1,27 @@
+english,hindi
+InfoBridge Controls,InfoBridge नियंत्रण
+Language / भाषा,भाषा / Language
+Filter by Service,सेवा के अनुसार फ़िल्टर
+All Services,सभी सेवाएं
+Clear Chat,चैट साफ करें
+System Info,सिस्टम जानकारी
+System Ready,सिस्टम तैयार
+Not Ready,सिस्टम तैयार नहीं
+indexed chunks,इंडेक्स किए गए भाग
+Chunks per service:,सेवा के अनुसार भाग:
+Built with using RAG pipeline.,RAG पाइपलाइन के साथ बनाया गया
+Tech Stack:,टेक स्टैक:
+Ask about government services...,सरकारी सेवाओं के बारे में पूछें...
+Searching documents and generating response...,दस्तावेज़ खोज रहे हैं और उत्तर तैयार कर रहे हैं...
+System not ready. Please ensure the vector store is built.,सिस्टम तैयार नहीं है। कृपया vector store बनाएं।
+Run: python scripts/build_index.py,चलाएं: python scripts/build_index.py
+LLM is not configured correctly. Please set GOOGLE_API_KEY in .env,LLM सही कॉन्फ़िगर नहीं है। कृपया .env में GOOGLE_API_KEY सेट करें।
+Try asking:,यह पूछकर देखें:
+Sources,स्रोत
+documents,दस्तावेज़
+Passport Services,पासपोर्ट सेवाएं
+Voter ID / EPIC,वोटर आईडी / EPIC
+Driving Licence & RC,ड्राइविंग लाइसेंस और RC
+Income Tax,आयकर
+Ayushman Bharat,आयुष्मान भारत
+"Smart Access to Indian Government Services — Ask about Passport, Voter ID, Driving Licence, Income Tax, Ayushman Bharat","भारतीय सरकारी सेवाओं तक स्मार्ट पहुंच — पासपोर्ट, वोटर आईडी, ड्राइविंग लाइसेंस, आयकर और आयुष्मान भारत के बारे में पूछें"

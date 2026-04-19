@@ -33,6 +33,11 @@ User Query → Embedding → Similarity Search → Context → Gemini LLM → Re
 InfoBridge/
 ├── app.py                      # Streamlit chat interface
 ├── config/settings.py          # Configuration constants
+├── frontend/
+│   ├── styles.py               # Centralized Streamlit CSS
+│   ├── ui_components.py        # Sidebar/header/sources/welcome components
+│   ├── i18n.py                 # CSV-based EN→HI translator
+│   └── translations_en_hi.csv  # UI text mapping
 ├── src/
 │   ├── data_processing/
 │   │   ├── pdf_extractor.py    # PDF text extraction
