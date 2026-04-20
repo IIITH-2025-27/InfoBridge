@@ -11,3 +11,10 @@ build/
 .synctex.gz
 *.log
 *.aux
+*.out
+*.toc
+*.gz
+*.zip
+*.tar.gz
+*.egg
+*.whl
