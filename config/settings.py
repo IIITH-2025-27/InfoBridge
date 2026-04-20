@@ -5,16 +5,23 @@ Central configuration for all components of the RAG pipeline.
 
 import os
 from pathlib import Path
-from dotenv import load_dotenv
 
-load_dotenv()
+# ─── Safe dotenv loading (no crash if not installed) ─────────────────────────
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 # ─── Paths ───────────────────────────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 VECTORSTORE_DIR = BASE_DIR / "vectorstore_data"
 
-# ─── Service Categories ─────────────────────────────────────────────────────
+# Ensure vectorstore directory exists (critical fix)
+VECTORSTORE_DIR.mkdir(parents=True, exist_ok=True)
+
+# ─── Service Categories ──────────────────────────────────────────────────────
 SERVICE_CATEGORIES = {
     "passport": {
         "name": "Passport Services",
@@ -52,37 +59,47 @@ SERVICE_CATEGORIES = {
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 EMBEDDING_DIMENSION = 384
 
-# ─── Chunking Configuration ─────────────────────────────────────────────────
-CHUNK_SIZE = 2000  # characters (~300-350 words)
-CHUNK_OVERLAP = 300  # characters (~50 words)
+# ─── Chunking Configuration (FIXED) ─────────────────────────────────────────
+# Smaller chunks = better retrieval accuracy
+CHUNK_SIZE = 500        # ~80–120 words
+CHUNK_OVERLAP = 100     # preserves context across chunks
 
 # ─── Retrieval Configuration ────────────────────────────────────────────────
-TOP_K = 5  # Number of chunks to retrieve
-SIMILARITY_THRESHOLD = 0.3  # Minimum similarity score to include
+TOP_K = 5
+SIMILARITY_THRESHOLD = 0.3  # used in FAISS filtering
 
 # ─── FAISS Configuration ────────────────────────────────────────────────────
 FAISS_INDEX_FILE = VECTORSTORE_DIR / "faiss_index.bin"
 METADATA_FILE = VECTORSTORE_DIR / "metadata.pkl"
 
 # ─── Gemini LLM Configuration ───────────────────────────────────────────────
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
-GEMINI_FALLBACK_MODELS = [
+
+# API key (generic)
+API_KEY = os.getenv("API_KEY", "")
+
+# Primary model
+MODEL = os.getenv("MODEL", "llama3-8b-8192")
+
+# Fallback models (string → list)
+FALLBACK_MODELS = [
     model.strip()
     for model in os.getenv(
-        "GEMINI_FALLBACK_MODELS", "gemini-2.0-flash-lite,gemini-1.5-flash"
+        "FALLBACK_MODELS",
+        "llama3-70b-8192,mixtral-8x7b-32768"
     ).split(",")
     if model.strip()
 ]
-GEMINI_TEMPERATURE = 0.3
-GEMINI_MAX_OUTPUT_TOKENS = 2048
+
+TEMPERATURE = 0.3
+MAX_OUTPUT_TOKENS = 2048
 
 # ─── Conversation Memory ────────────────────────────────────────────────────
-MAX_MEMORY_TURNS = 10  # Number of conversation turns to retain
+MAX_MEMORY_TURNS = 10
 
 # ─── Supported Languages ────────────────────────────────────────────────────
 LANGUAGES = {
-    "en": {"name": "English", "flag": "🇬🇧"},
+    "en": {"name": "English (अंग्रेज़ी)", "flag": "🇬🇧"},
     "hi": {"name": "हिन्दी (Hindi)", "flag": "🇮🇳"},
 }
+
 DEFAULT_LANGUAGE = "en"

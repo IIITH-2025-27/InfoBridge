@@ -49,14 +49,14 @@ def build_index(data_dir: Path = DATA_DIR) -> None:
     print("=" * 60)
 
     # ── Step 1: Extract text from PDFs ────────────────────────────────────
-    print(f"\n📂 Data directory: {data_dir}")
+    print(f"\n Data directory: {data_dir}")
     print("─" * 40)
 
     all_documents = []
     for service_key, service_info in SERVICE_CATEGORIES.items():
         service_dir = data_dir / service_key
         if not service_dir.exists():
-            print(f"  ⚠️  {service_info['icon']} {service_info['name']}: "
+            print(f"  {service_info['icon']} {service_info['name']}: "
                   f"directory not found ({service_dir})")
             continue
 
@@ -69,7 +69,7 @@ def build_index(data_dir: Path = DATA_DIR) -> None:
         print(f"     → {len(docs)} documents extracted")
 
     if not all_documents:
-        print("\n❌ No documents found! Please add PDFs to the data/ directory.")
+        print("\n No documents found! Please add PDFs to the data/ directory.")
         print("   Expected structure:")
         for key in SERVICE_CATEGORIES:
             print(f"     data/{key}/*.pdf")
@@ -78,25 +78,27 @@ def build_index(data_dir: Path = DATA_DIR) -> None:
     print(f"\n📄 Total documents: {len(all_documents)}")
 
     # ── Step 2: Chunk documents ───────────────────────────────────────────
-    print("\n✂️  Chunking documents...")
+    print("\n Chunking documents...")
     chunker = TextChunker()
     all_chunks = chunker.chunk_documents(all_documents)
     print(f"   → {len(all_chunks)} chunks created")
 
     if not all_chunks:
-        print("❌ No chunks created. Check if PDF text extraction is working.")
+        print(" No chunks created. Check if PDF text extraction is working.")
         sys.exit(1)
 
     # ── Step 3: Generate embeddings ───────────────────────────────────────
-    print("\n🧠 Generating embeddings (this may take a moment)...")
+    print("\nGenerating embeddings (this may take a moment)...")
     embedder = Embedder()
-    embeddings = embedder.encode_chunks(all_chunks)
+    embeddings, valid_chunks = embedder.encode_chunks(all_chunks)
     print(f"   → Embeddings shape: {embeddings.shape}")
+    if len(valid_chunks) != len(all_chunks):
+        print(f"   → Filtered weak/empty chunks: {len(all_chunks) - len(valid_chunks)}")
 
     # ── Step 4: Build and save FAISS index ────────────────────────────────
     print("\n📦 Building FAISS index...")
     vector_store = VectorStore()
-    vector_store.add_documents(embeddings, all_chunks)
+    vector_store.add_documents(embeddings, valid_chunks)
 
     # Save to disk
     VECTORSTORE_DIR.mkdir(parents=True, exist_ok=True)
@@ -111,7 +113,7 @@ def build_index(data_dir: Path = DATA_DIR) -> None:
     print("=" * 60)
     print(f"\n  📊 Summary:")
     print(f"     Total documents: {len(all_documents)}")
-    print(f"     Total chunks:    {len(all_chunks)}")
+    print(f"     Total chunks:    {len(valid_chunks)}")
     print(f"     Index size:      {vector_store.size} vectors")
     print(f"     Time elapsed:    {elapsed:.1f}s")
     print(f"\n  📁 Chunks per service:")

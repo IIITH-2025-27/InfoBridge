@@ -28,6 +28,12 @@ def init_session_state(default_language: str) -> None:
     if "pending_prompt" not in st.session_state:
         st.session_state.pending_prompt = None
 
+    if "theme_mode" not in st.session_state:
+        st.session_state.theme_mode = "dark"
+
+    if "sidebar_open" not in st.session_state:
+        st.session_state.sidebar_open = True
+
 
 def clear_chat_state() -> None:
     """Clear chat and memory for the current session."""

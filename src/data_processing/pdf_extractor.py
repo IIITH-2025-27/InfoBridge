@@ -1,137 +1,189 @@
 """
-PDF Text Extraction Module
-Extracts and cleans text from government PDF documents.
+PDF Text Extraction Module (PRODUCTION SAFE)
+- PyMuPDF for primary extraction
+- OPTIONAL OCR fallback (auto-detected)
+- Graceful degradation if OCR not installed
 """
 
 import re
 import logging
+import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict
 
-from PyPDF2 import PdfReader
+import fitz  # PyMuPDF
 
 logger = logging.getLogger(__name__)
 
+# =========================
+# OPTIONAL OCR SETUP
+# =========================
+
+try:
+    import pytesseract
+    from PIL import Image
+
+    TESSERACT_AVAILABLE = shutil.which("tesseract") is not None
+
+    if TESSERACT_AVAILABLE:
+        logger.info("✓ Tesseract OCR available")
+    else:
+        logger.warning("⚠️ Tesseract not found → OCR disabled")
+
+except ImportError:
+    TESSERACT_AVAILABLE = False
+    logger.warning("⚠️ pytesseract/PIL not installed → OCR disabled")
+
 
 class PDFExtractor:
-    """Handles extraction of text content from PDF files."""
+    """Extracts structured text from PDFs with optional OCR fallback."""
+
+    # =========================
+    # PUBLIC METHODS
+    # =========================
 
     @staticmethod
-    def extract_text_from_pdf(pdf_path: str | Path) -> str:
-        """
-        Extract all text from a PDF file.
-
-        Args:
-            pdf_path: Path to the PDF file.
-
-        Returns:
-            Extracted text as a single string.
-        """
+    def extract_from_pdf(pdf_path: str | Path) -> List[Dict]:
         pdf_path = Path(pdf_path)
+
         if not pdf_path.exists():
             raise FileNotFoundError(f"PDF not found: {pdf_path}")
 
+        documents = []
+
         try:
-            reader = PdfReader(str(pdf_path))
-            pages_text = []
+            doc = fitz.open(pdf_path)
 
-            for page_num, page in enumerate(reader.pages, start=1):
-                text = page.extract_text()
-                if text:
-                    cleaned = PDFExtractor._clean_page_text(text, page_num)
-                    if cleaned.strip():
-                        pages_text.append(cleaned)
+            for page_num, page in enumerate(doc, start=1):
 
-            full_text = "\n\n".join(pages_text)
+                text = page.get_text()
+
+                # Step 1: Check if text is weak
+                if PDFExtractor._is_bad_text(text):
+
+                    # Step 2: OCR fallback (only if available)
+                    if TESSERACT_AVAILABLE and len(page.get_images()) > 0:
+                        logger.warning(f"⚠️ OCR fallback on page {page_num}")
+                        text = PDFExtractor._run_ocr(page)
+                    else:
+                        logger.warning(
+                            f"⚠️ Skipping OCR on page {page_num} (not available or no images)"
+                        )
+
+                # Step 3: Final check
+                if PDFExtractor._is_bad_text(text):
+                    logger.warning(f"Skipping page {page_num} (no useful text)")
+                    continue
+
+                cleaned = PDFExtractor._clean_text(text)
+
+                documents.append({
+                    "text": cleaned,
+                    "page": page_num,
+                    "source_file": pdf_path.name,
+                    "source_path": str(pdf_path),
+                    "service_type": pdf_path.parent.name
+                })
+
             logger.info(
-                f"Extracted {len(pages_text)} pages from {pdf_path.name} "
-                f"({len(full_text)} characters)"
+                f"✓ Extracted {len(documents)} usable pages from {pdf_path.name}"
             )
-            return full_text
 
         except Exception as e:
-            logger.error(f"Error extracting text from {pdf_path}: {e}")
+            logger.error(f"✗ Error processing {pdf_path}: {e}")
             raise
 
-    @staticmethod
-    def _clean_page_text(text: str, page_num: int) -> str:
-        """
-        Clean extracted page text by removing noise.
-
-        Args:
-            text: Raw extracted text from a page.
-            page_num: Page number (for reference).
-
-        Returns:
-            Cleaned text.
-        """
-        # Remove excessive whitespace but preserve paragraph breaks
-        text = re.sub(r"[ \t]+", " ", text)
-
-        # Remove page numbers (common patterns)
-        text = re.sub(r"\n\s*Page\s*\d+\s*(?:of\s*\d+)?\s*\n", "\n", text, flags=re.IGNORECASE)
-        text = re.sub(r"\n\s*-\s*\d+\s*-\s*\n", "\n", text)
-        text = re.sub(r"^\s*\d+\s*$", "", text, flags=re.MULTILINE)
-
-        # Remove common header/footer patterns
-        text = re.sub(r"(?i)^\s*(confidential|draft|internal)\s*$", "", text, flags=re.MULTILINE)
-
-        # Remove URLs that are just noise (but keep informative ones)
-        # text = re.sub(r"https?://\S+", "", text)  # Keep URLs as they may be useful
-
-        # Fix multiple newlines
-        text = re.sub(r"\n{3,}", "\n\n", text)
-
-        # Fix spacing after periods
-        text = re.sub(r"\.([A-Z])", r". \1", text)
-
-        return text.strip()
+        return documents
 
     @staticmethod
     def extract_from_directory(
         dir_path: str | Path,
-        service_type: Optional[str] = None,
-    ) -> list[dict]:
-        """
-        Extract text from all PDFs in a directory.
+        service_type: Optional[str] = None
+    ) -> List[Dict]:
 
-        Args:
-            dir_path: Path to directory containing PDFs.
-            service_type: Optional service category label.
-
-        Returns:
-            List of dicts with keys: text, source_file, service_type.
-        """
         dir_path = Path(dir_path)
+
         if not dir_path.exists():
             logger.warning(f"Directory not found: {dir_path}")
             return []
 
-        documents = []
+        all_docs = []
         pdf_files = sorted(dir_path.glob("*.pdf"))
 
         if not pdf_files:
-            logger.warning(f"No PDF files found in {dir_path}")
+            logger.warning(f"No PDFs found in {dir_path}")
             return []
 
         for pdf_file in pdf_files:
             try:
-                text = PDFExtractor.extract_text_from_pdf(pdf_file)
-                if text.strip():
-                    documents.append({
-                        "text": text,
-                        "source_file": pdf_file.name,
-                        "source_path": str(pdf_file),
-                        "service_type": service_type or dir_path.name,
-                    })
-                    logger.info(f"✓ Processed: {pdf_file.name}")
-                else:
-                    logger.warning(f"✗ Empty text from: {pdf_file.name}")
-            except Exception as e:
-                logger.error(f"✗ Failed to process {pdf_file.name}: {e}")
+                docs = PDFExtractor.extract_from_pdf(pdf_file)
 
-        logger.info(
-            f"Extracted {len(documents)} documents from {dir_path} "
-            f"(service: {service_type or dir_path.name})"
-        )
-        return documents
+                for d in docs:
+                    if service_type:
+                        d["service_type"] = service_type
+
+                all_docs.extend(docs)
+                logger.info(f"✓ Processed: {pdf_file.name}")
+
+            except Exception as e:
+                logger.error(f"✗ Failed: {pdf_file.name} | {e}")
+
+        logger.info(f"Total extracted pages: {len(all_docs)}")
+        return all_docs
+
+    # =========================
+    # INTERNAL HELPERS
+    # =========================
+
+    @staticmethod
+    def _is_bad_text(text: str) -> bool:
+        """Check if extracted text is too weak."""
+        if not text:
+            return True
+
+        text = text.strip()
+
+        if len(text) < 50:
+            return True
+
+        if len(text.split()) < 10:
+            return True
+
+        return False
+
+    @staticmethod
+    def _run_ocr(page) -> str:
+        """Run OCR safely."""
+        try:
+            pix = page.get_pixmap()
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            return pytesseract.image_to_string(img)
+        except Exception as e:
+            logger.error(f"OCR failed: {e}")
+            return ""
+
+    @staticmethod
+    def _clean_text(text: str) -> str:
+        """Clean noisy government PDF text."""
+
+        # Normalize spaces
+        text = re.sub(r"[ \t]+", " ", text)
+
+        # Remove page numbers
+        text = re.sub(r"\n\s*Page\s*\d+.*?\n", "\n", text, flags=re.IGNORECASE)
+        text = re.sub(r"^\s*\d+\s*$", "", text, flags=re.MULTILINE)
+
+        # Remove decorative symbols
+        text = re.sub(r"\*{2,}", "", text)
+        text = re.sub(r"[⮚•►]", "", text)
+
+        # Remove bracket headers
+        text = re.sub(r"\[.*?\]", "", text)
+
+        # Remove only noisy parentheses (safe)
+        text = re.sub(r"\((CPV.*?|Division.*?)\)", "", text)
+
+        # Fix excessive newlines
+        text = re.sub(r"\n{3,}", "\n\n", text)
+
+        return text.strip()

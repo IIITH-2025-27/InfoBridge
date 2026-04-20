@@ -13,9 +13,8 @@ from frontend.ui_components import render_header, render_sidebar, show_welcome
 def run_app() -> None:
     """Run the full Streamlit UI flow."""
     init_session_state(DEFAULT_LANGUAGE)
-    apply_styles()
 
-    selected_language, selected_service_filter = render_sidebar(
+    selected_language, selected_service_filter, theme = render_sidebar(
         current_language=st.session_state.language,
         current_service_filter=st.session_state.service_filter,
         languages=LANGUAGES,
@@ -26,11 +25,14 @@ def run_app() -> None:
     st.session_state.language = selected_language
     st.session_state.service_filter = selected_service_filter
 
-    render_header(language=st.session_state.language)
+    apply_styles(theme)
+
+    render_header(language=st.session_state.language, theme=theme)
 
     selected_example = show_welcome(
         language=st.session_state.language,
         has_messages=bool(st.session_state.messages),
+        theme=theme,
     )
     if selected_example:
         st.session_state.pending_prompt = selected_example

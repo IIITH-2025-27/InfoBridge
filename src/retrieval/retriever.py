@@ -8,7 +8,8 @@ from typing import Optional
 
 from src.embeddings.embedder import Embedder
 from src.vectorstore.store import VectorStore
-from config.settings import TOP_K, SIMILARITY_THRESHOLD
+from config.settings import TOP_K
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,46 +33,33 @@ class Retriever:
         query: str,
         top_k: int = TOP_K,
         service_filter: Optional[str] = None,
-        min_score: float = SIMILARITY_THRESHOLD,
     ) -> list[dict]:
-        """
-        Retrieve the most relevant chunks for a query.
 
-        Args:
-            query: User query string.
-            top_k: Number of results to return.
-            service_filter: Optional service category to filter by.
-            min_score: Minimum similarity score threshold.
+        # STEP 1: Normalize query using LLM
+        
 
-        Returns:
-            List of result dicts: {text, metadata, score}.
-        """
-        # Encode the query
+        # DEBUG (very useful)
+        # logger.info(f"Query: {query}")
+
+        # STEP 2: Embedding
         query_embedding = self.embedder.encode_query(query)
 
-        # Search the vector store
+        #  STEP 3: Retrieval
         results = self.vector_store.search(
             query_embedding=query_embedding,
             top_k=top_k,
             service_filter=service_filter,
         )
 
-        # Filter by minimum score
-        filtered_results = [r for r in results if r["score"] >= min_score]
-
-        if not filtered_results and results:
-            # If all results are below threshold, return the best one anyway
-            filtered_results = [results[0]]
-            logger.warning(
-                f"All results below threshold ({min_score}). "
-                f"Returning best match with score {results[0]['score']:.4f}"
-            )
+        if not results:
+            logger.warning(f"No results found for query: '{query}'")
 
         logger.info(
-            f"Query: '{query[:60]}...' → {len(filtered_results)} results "
+            f"Query: '{query[:60]}...' → {len(results)} results "
             f"(filter: {service_filter or 'all'})"
         )
-        return filtered_results
+
+        return results
 
     def format_context(self, results: list[dict]) -> str:
         """
@@ -87,6 +75,7 @@ class Retriever:
             return "No relevant information found in the documents."
 
         context_parts = []
+
         for i, result in enumerate(results, start=1):
             source = result["metadata"].get("source_file", "Unknown")
             service = result["metadata"].get("service_type", "Unknown")
@@ -97,7 +86,14 @@ class Retriever:
                 f"{result['text']}"
             )
 
-        return "\n\n---\n\n".join(context_parts)
+        context = "\n\n---\n\n".join(context_parts)
+
+        # 🔥 Optional safety: limit context size (prevents LLM overflow)
+        MAX_CONTEXT_CHARS = 2000
+        if len(context) > MAX_CONTEXT_CHARS:
+            context = context[:MAX_CONTEXT_CHARS] + "\n\n[Context truncated]"
+
+        return context
 
     def get_source_citations(self, results: list[dict]) -> list[dict]:
         """
@@ -109,17 +105,30 @@ class Retriever:
         Returns:
             List of citation dicts with source details.
         """
-        seen_sources = set()
-        citations = []
+        citation_map: dict[tuple[str, str, str], dict] = {}
 
         for result in results:
-            source_file = result["metadata"].get("source_file", "Unknown")
-            if source_file not in seen_sources:
-                seen_sources.add(source_file)
-                citations.append({
+            metadata = result.get("metadata", {})
+            source_file = str(metadata.get("source_file", "Unknown"))
+            page = str(metadata.get("page", "?"))
+            service_type = str(metadata.get("service_type", "unknown"))
+            relevance_score = float(result.get("score", 0.0))
+
+            key = (source_file, page, service_type)
+            existing = citation_map.get(key)
+
+            if existing is None or relevance_score > float(existing.get("relevance_score", 0.0)):
+                citation_map[key] = {
                     "source_file": source_file,
-                    "service_type": result["metadata"].get("service_type", "Unknown"),
-                    "relevance_score": result["score"],
-                })
+                    "page": page,
+                    "service_type": service_type,
+                    "relevance_score": relevance_score,
+                }
+
+        citations = sorted(
+            citation_map.values(),
+            key=lambda item: float(item.get("relevance_score", 0.0)),
+            reverse=True,
+        )
 
         return citations
