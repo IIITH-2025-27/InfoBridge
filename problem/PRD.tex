@@ -2,9 +2,8 @@
 
 \usepackage[a4paper, margin=1in]{geometry}
 \usepackage{titlesec}
-\usepackage{hyperref}
 \usepackage{enumitem}
-\usepackage{graphicx}
+\usepackage{hyperref}
 
 \title{\textbf{Product Requirements Document (PRD)}\\
 InfoBridge: Smart Access to Public Services}
@@ -15,358 +14,105 @@ InfoBridge: Smart Access to Public Services}
 \maketitle
 
 \section{Abstract}
-Accessing government service information is often challenging due to unstructured and lengthy documentation. This project presents InfoBridge, a Retrieval-Augmented Generation (RAG) based chatbot that retrieves relevant information from official government PDFs and generates accurate, source-backed responses. The system aims to improve accessibility, reduce user effort, and provide reliable answers in a conversational interface.
+InfoBridge is a Streamlit-based Retrieval-Augmented Generation (RAG) chatbot for Indian government services. It retrieves information from official PDF documents, builds context with source citations, and generates grounded answers through a Groq-backed LLM client. The interface includes English/Hindi UI support, a collapsible sidebar, theme persistence, and service filtering.
 
 \section{Introduction}
-Government services such as passport application, voter registration, and taxation involve extensive documentation. Users often struggle to navigate these documents and extract relevant information efficiently. This project addresses the problem by building an AI-powered chatbot that enables users to query government services and receive precise, context-aware answers.
+Government service information is often distributed across long PDF manuals and circulars. InfoBridge addresses this by allowing users to ask service-related questions in a conversational interface and receive answers that are grounded in the indexed documents.
 
 \section{Objectives}
 \begin{itemize}
-    \item Develop a chatbot for querying government service information.
-    \item Implement a RAG-based pipeline for accurate answer generation.
-    \item Provide source-backed responses to ensure reliability.
-    \item Improve accessibility through a user-friendly interface.
+    \item Provide a searchable chatbot for government service information.
+    \item Use a RAG pipeline to keep answers grounded in official PDFs.
+    \item Show source citations for every assistant response.
+    \item Support English and Hindi UI labels.
+    \item Provide a clean Streamlit experience with theme switching and a collapsible sidebar.
 \end{itemize}
 
 \section{Scope}
-\textbf{Included Services:}
+\textbf{Included services:}
 \begin{itemize}
-    \item Passport services
-    \item Voter ID services
-    \item Driving Licence
+    \item Passport Services
+    \item Voter ID / EPIC
+    \item Driving Licence \& RC
     \item Income Tax
     \item Ayushman Bharat
 \end{itemize}
 
-\textbf{Out of Scope:}
+\textbf{Out of scope:}
 \begin{itemize}
-    \item Real-time API integration
-    \item User authentication
+    \item Real-time government APIs
+    \item Authentication
     \item Transaction processing
 \end{itemize}
 
 \section{System Overview}
-The system follows a Retrieval-Augmented Generation (RAG) pipeline:
+The current system follows the pipeline below:
 \begin{enumerate}
-    \item Collect government PDFs
-    \item Extract and preprocess text
-    \item Split text into chunks
-    \item Generate embeddings
-    \item Store embeddings in vector database
-    \item Retrieve relevant chunks for query
-    \item Generate response using LLM
+    \item PDFs are extracted from the service folders under \texttt{data/}.
+    \item Documents are chunked into overlapping text segments.
+    \item Chunks are embedded with \texttt{sentence-transformers/all-MiniLM-L6-v2}.
+    \item Embeddings and metadata are stored in FAISS.
+    \item A user query is embedded and searched against the vector store.
+    \item Retrieved chunks are formatted into context and citations.
+    \item The Groq client generates the final answer.
+    \item The UI renders the answer and source list in Streamlit.
 \end{enumerate}
-
-\section{System Architecture}
-\begin{verbatim}
-PDFs → Text → Chunks → Embeddings → Vector DB
-                                      ↓
-User Query → Embedding → Retrieval → LLM → Answer + Sources
-\end{verbatim}
-
-\section{Dataset Description}
-The dataset consists of official government PDF documents collected from public portals. Approximately 20--40 PDFs are used across multiple services. Each document is processed into smaller text chunks (300--500 words) with metadata including source and service type.
-
-\section{Methodology}
-
-\subsection{Data Preprocessing}
-\begin{itemize}
-    \item Extract text using PyPDF2
-    \item Remove noise such as headers and footers
-    \item Split text into overlapping chunks
-\end{itemize}
-
-\subsection{Embedding Generation}
-\begin{itemize}
-    \item Model: Sentence Transformers (MiniLM)
-    \item Convert text chunks into vector embeddings
-\end{itemize}
-
-\subsection{Vector Storage}
-\begin{itemize}
-    \item Store embeddings using FAISS
-    \item Enable fast similarity search
-\end{itemize}
-
-\subsection{Query Processing}
-\begin{itemize}
-    \item Convert user query into embedding
-    \item Retrieve top-k similar chunks
-\end{itemize}
-
-\subsection{Answer Generation}
-\begin{itemize}
-    \item Use Gemini API for response generation
-    \item Provide context-aware answers
-    \item Restrict responses to retrieved content
-\end{itemize}
 
 \section{Functional Requirements}
 \begin{itemize}
-    \item Accept user queries through chat interface
-    \item Retrieve relevant document segments
-    \item Generate accurate responses using LLM
-    \item Display source references
-    \item Support multi-service queries
-    \item Optional: Language toggle (English/Hindi)
+    \item Accept queries through a Streamlit chat interface.
+    \item Retrieve relevant document chunks using semantic search.
+    \item Generate grounded answers with conversation memory.
+    \item Display source citations for each answer.
+    \item Filter retrieval by service category.
+    \item Support English and Hindi UI labels.
+    \item Persist theme selection and sidebar open/closed state within the session.
 \end{itemize}
 
 \section{Non-Functional Requirements}
 \begin{itemize}
-    \item Response latency $<$ 3 seconds
-    \item High accuracy and reliability
-    \item Scalable architecture
-    \item User-friendly interface
-\end{itemize}
-
-\section{Evaluation Metrics}
-\begin{itemize}
-    \item \textbf{Accuracy:} Correctness of responses
-    \item \textbf{Relevance:} Quality of retrieved documents
-    \item \textbf{Latency:} Response time
-    \item \textbf{User Satisfaction:} Feedback-based evaluation
+    \item Fast and responsive chat interaction.
+    \item Reliable answer grounding through retrieved context.
+    \item Clear readability in both light and dark modes.
+    \item Maintainable modular Python codebase.
 \end{itemize}
 
 \section{Technology Stack}
 \begin{itemize}
     \item Frontend: Streamlit
     \item Backend: Python
-    \item Embeddings: Sentence Transformers (MiniLM)
-    \item Vector DB: FAISS
-    \item LLM: Gemini API
+    \item Embeddings: Sentence Transformers MiniLM
+    \item Vector Store: FAISS
+    \item LLM: Groq chat completions
     \item PDF Parsing: PyPDF2
+    \item Chunking: LangChain text splitters
 \end{itemize}
 
-\section{Workflow}
-\subsection{Data Preparation}
-Collect and preprocess PDF documents.
-
-\subsection{Embedding Pipeline}
-Generate embeddings and store in vector database.
-
-\subsection{Query Pipeline}
-Retrieve relevant chunks based on user query.
-
-\subsection{Response Generation}
-Generate final answer with LLM.
-
-\section{Team Responsibilities}
+\section{Current UI Behavior}
 \begin{itemize}
-    \item Data Team: Data collection and preprocessing
-    \item Backend Team: Embeddings and retrieval
-    \item LLM Team: Prompt engineering
-    \item Frontend Team: UI development
+    \item The sidebar can collapse into a left strip.
+    \item The app remembers the selected theme across reruns.
+    \item The language selector is English/Hindi only.
+    \item The service filter uses translated labels.
+    \item Assistant responses render source citations below the answer.
 \end{itemize}
 
-\section{Detailed Team Responsibilities and Execution Plan}
-
-\subsection{Data Team (2 Members)}
-\textbf{Objective:} Collect and preprocess dataset from government PDFs.
-
-\textbf{Tasks:}
-\begin{enumerate}
-    \item Identify and download official PDFs from government portals:
-    \begin{itemize}
-        \item Passport (passportindia.gov.in)
-        \item Voter ID (eci.gov.in)
-        \item Driving Licence (parivahan.gov.in)
-        \item Income Tax (incometax.gov.in)
-        \item Ayushman Bharat (nha.gov.in)
-    \end{itemize}
-    
-    \item Organize files into structured folders:
-    \begin{verbatim}
-data/passport/
-data/voter/
-data/driving/
-data/tax/
-data/health/
-    \end{verbatim}
-
-    \item Extract text from PDFs using PyPDF2.
-
-    \item Clean extracted text:
-    \begin{itemize}
-        \item Remove headers, footers, and page numbers
-        \item Remove unnecessary symbols and formatting issues
-    \end{itemize}
-
-    \item Validate extracted text quality.
-
-\end{enumerate}
-
-\textbf{Output:} Clean text data ready for chunking.
-
----
-
-\subsection{Backend Team (2 Members)}
-\textbf{Objective:} Build embedding and retrieval pipeline.
-
-\textbf{Tasks:}
-\begin{enumerate}
-    \item Implement text chunking:
-    \begin{itemize}
-        \item Chunk size: 300--500 words
-        \item Overlap: 50 words
-    \end{itemize}
-
-    \item Add metadata to each chunk:
-    \begin{itemize}
-        \item Source file name
-        \item Service type
-    \end{itemize}
-
-    \item Generate embeddings using Sentence Transformers (MiniLM).
-
-    \item Store embeddings in FAISS vector database.
-
-    \item Implement retrieval function:
-    \begin{itemize}
-        \item Convert query to embedding
-        \item Retrieve top-k relevant chunks
-    \end{itemize}
-
-    \item Optimize retrieval performance (tune k value).
-
-\end{enumerate}
-
-\textbf{Output:} Working retrieval pipeline.
-
----
-
-\subsection{LLM Team (1--2 Members)}
-\textbf{Objective:} Generate accurate responses using LLM.
-
-\textbf{Tasks:}
-\begin{enumerate}
-    \item Integrate Gemini (or Llama) API.
-
-    \item Design prompt template:
-    \begin{itemize}
-        \item Restrict answers to provided context
-        \item Handle missing information cases
-    \end{itemize}
-
-    \item Implement response generation:
-    \begin{itemize}
-        \item Combine retrieved chunks into context
-        \item Generate answer using LLM
-    \end{itemize}
-
-    \item Add formatting:
-    \begin{itemize}
-        \item Clear answer structure
-        \item Bullet points for readability
-    \end{itemize}
-
-    \item Implement optional features:
-    \begin{itemize}
-        \item Language toggle (English/Hindi)
-        \item Error handling for empty responses
-    \end{itemize}
-
-\end{enumerate}
-
-\textbf{Output:} Context-aware answer generation module.
-
----
-
-\subsection{Frontend Team (1--2 Members)}
-\textbf{Objective:} Build user interface and integrate system.
-
-\textbf{Tasks:}
-\begin{enumerate}
-    \item Develop Streamlit-based chat interface:
-    \begin{itemize}
-        \item Input box for user queries
-        \item Display chatbot responses
-    \end{itemize}
-
-    \item Display retrieved sources:
-    \begin{itemize}
-        \item Show document names
-        \item Optional: highlight relevant text
-    \end{itemize}
-
-    \item Implement chat history:
-    \begin{itemize}
-        \item Store previous queries and responses
-    \end{itemize}
-
-    \item Add UI enhancements:
-    \begin{itemize}
-        \item Clean layout
-        \item Responsive design
-    \end{itemize}
-
-    \item Integrate backend and LLM pipeline:
-    \begin{itemize}
-        \item Connect query input to retrieval function
-        \item Display generated answers
-    \end{itemize}
-
-\end{enumerate}
-
-\textbf{Output:} Fully functional web application.
-
----
-
-\subsection{Integration and Testing (All Members)}
-
-\textbf{Tasks:}
-\begin{enumerate}
-    \item Integrate all modules:
-    \begin{itemize}
-        \item UI → Retrieval → LLM → Output
-    \end{itemize}
-
-    \item Perform testing:
-    \begin{itemize}
-        \item Test queries from all services
-        \item Validate accuracy and relevance
-    \end{itemize}
-
-    \item Debug issues:
-    \begin{itemize}
-        \item Fix incorrect retrieval
-        \item Improve prompt design
-    \end{itemize}
-
-    \item Optimize performance:
-    \begin{itemize}
-        \item Reduce latency
-        \item Improve response clarity
-    \end{itemize}
-
-\end{enumerate}
-
-\textbf{Output:} Final working system ready for deployment.
-
-\section{Timeline}
+\section{Implementation Notes}
 \begin{itemize}
-    \item Day 1: Data collection
-    \item Day 2: Embeddings and retrieval
-    \item Day 3: LLM integration
-    \item Day 4: UI and testing
+    \item API key is read from the \texttt{API_KEY} environment variable.
+    \item The default model is \texttt{llama3-8b-8192} with fallback model support.
+    \item The translation table is stored in \texttt{frontend/translations\_en\_hi.csv}.
+    \item Session state tracks messages, memory, language, theme, and sidebar state.
 \end{itemize}
 
-\section{Challenges}
+\section{Verification}
 \begin{itemize}
-    \item Handling noisy PDF data
-    \item Avoiding hallucinations
-    \item Ensuring relevant retrieval
-\end{itemize}
-
-\section{Future Work}
-\begin{itemize}
-    \item Multi-language support
-    \item Voice-based interaction
-    \item Mobile deployment
-    \item Integration with APIs
+    \item Build the FAISS index using \texttt{python scripts/build\_index.py}.
+    \item Run the app using \texttt{streamlit run app.py}.
+    \item Validate that answers include sources and that the sidebar/theme state persists.
 \end{itemize}
 
 \section{Conclusion}
-InfoBridge demonstrates an effective application of RAG systems for improving access to government services. It enables users to interact with complex documents through a simple conversational interface, ensuring accuracy and reliability.
+InfoBridge is now implemented as a complete modular RAG chatbot with a current Streamlit UI, Groq-based generation, persistent theme handling, a collapsible sidebar, and bilingual interface labels.
 
 \end{document}
-
