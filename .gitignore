@@ -2,7 +2,6 @@
 vectorstore_data/
 *.pyc
 __pycache__/
-.env
 *.egg-info/
 dist/
 build/
