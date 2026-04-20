@@ -2,100 +2,105 @@
 
 **SMAI Assignment 3 — T10.7: Multi-Service Government RAG Chatbot**
 
-InfoBridge is a Retrieval-Augmented Generation (RAG) chatbot that answers questions about Indian government services by retrieving information from official PDF documents and generating accurate, source-backed responses.
+InfoBridge is a Retrieval-Augmented Generation (RAG) chatbot for Indian government services. It retrieves information from official PDFs, formats citations, and generates grounded answers in a Streamlit interface.
 
-## ✨ Features
+## Features
 
-- 🔍 **RAG Pipeline** — Retrieves relevant information from official government PDFs
-- 🤖 **Gemini AI** — Powered by Google Gemini 2.0 Flash for accurate responses
-- 🌐 **Hindi Support** — Language toggle for English and Hindi responses
-- 💬 **Conversation Memory** — Context-aware follow-up questions
-- 📎 **Source Citations** — Every answer comes with document references
-- 🛟 **Graceful Fallback** — Shows retrieval-based, cited snippets when LLM quota/model issues occur
-- 🗂️ **Multi-Service** — Covers 5 government services:
-  - 🛂 Passport Services
-  - 🗳️ Voter ID / EPIC
-  - 🚗 Driving Licence & RC
-  - 💰 Income Tax
-  - 🏥 Ayushman Bharat (PM-JAY)
+- RAG pipeline over five service areas: Passport, Voter ID / EPIC, Driving Licence & RC, Income Tax, and Ayushman Bharat.
+- Groq-powered LLM responses through `src/llm/client.py` with `MODEL` and `FALLBACK_MODELS` support.
+- Source citations for every answer.
+- Conversation memory for follow-up questions.
+- English/Hindi UI support through the CSV translation layer in `frontend/translations_en_hi.csv`.
+- Sidebar with a collapsible left strip, theme persistence, service filtering, and a localized service selector.
+- Streamlit chat interface with reusable styling in `frontend/styles.py`.
 
-## 🏗️ Architecture
+## Architecture
 
 ```
-PDFs → Text Extraction → Chunking → Embeddings (MiniLM) → FAISS Index
-                                                              ↓
-User Query → Embedding → Similarity Search → Context → Gemini LLM → Response + Sources
+PDFs -> PDF extraction -> chunking -> embeddings -> FAISS index
+                                         |
+                                         v
+User query -> retrieval -> context + citations -> Groq LLM -> answer + sources
 ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 InfoBridge/
-├── app.py                      # Streamlit chat interface
-├── config/settings.py          # Configuration constants
+├── app.py                      # Streamlit entrypoint
+├── config/
+│   └── settings.py             # Central configuration
 ├── frontend/
-│   ├── styles.py               # Centralized Streamlit CSS
-│   ├── ui_components.py        # Sidebar/header/sources/welcome components
-│   ├── i18n.py                 # CSV-based EN→HI translator
-│   └── translations_en_hi.csv  # UI text mapping
+│   ├── app_shell.py            # Top-level UI orchestration
+│   ├── chat.py                 # Chat rendering and response flow
+│   ├── i18n.py                # CSV-based UI translations
+│   ├── state.py               # Streamlit session state helpers
+│   ├── styles.py              # Theme and layout styles
+│   ├── ui_components.py       # Sidebar/header/source UI
+│   └── translations_en_hi.csv # English-Hindi label mapping
 ├── src/
 │   ├── data_processing/
-│   │   ├── pdf_extractor.py    # PDF text extraction
-│   │   └── chunker.py          # Text chunking with metadata
+│   │   ├── pdf_extractor.py
+│   │   └── chunker.py
 │   ├── embeddings/
-│   │   └── embedder.py         # MiniLM embedding generation
-│   ├── vectorstore/
-│   │   └── store.py            # FAISS vector store
-│   ├── retrieval/
-│   │   └── retriever.py        # Query & retrieval pipeline
+│   │   └── embedder.py
 │   ├── llm/
-│   │   ├── gemini_client.py    # Gemini API wrapper
-│   │   ├── prompts.py          # EN/HI prompt templates
-│   │   └── generator.py        # Response generation orchestrator
-│   └── memory/
-│       └── chat_memory.py      # Conversation memory
+│   │   ├── client.py          # Groq client
+│   │   ├── prompts.py
+│   │   └── generator.py
+│   ├── memory/
+│   │   └── chat_memory.py
+│   ├── retrieval/
+│   │   └── retriever.py
+│   └── vectorstore/
+│       └── store.py
 ├── scripts/
-│   └── build_index.py          # Index building script
-├── data/                       # PDF documents (organized by service)
-├── vectorstore_data/           # Persisted FAISS index
-├── requirements.txt
-└── .env.example
+│   └── build_index.py
+├── data/
+│   ├── passport/
+│   ├── voter/
+│   ├── driving/
+│   ├── tax/
+│   └── health/
+│  
+├── utility
+│   ├── language.py   
+│ 
+├── vectorstore_data/
+└── requirements.txt
 ```
 
-##  Quick Start
+## Quick Start
 
-> **⚠️ All commands should be run inside a virtual environment.**
-
-### 1. Create & Activate Virtual Environment
+### 1. Create and activate a virtual environment
 
 ```bash
-# Create the virtual environment
-python3 -m venv .venv
-
-# Activate it (Linux / macOS)
-source .venv/bin/activate
-
-# Activate it (Windows)
-# .venv\Scripts\activate
+python -m venv .venv
 ```
 
-### 2. Install Dependencies
+Windows:
+
+```bash
+.venv\Scripts\activate
+```
+
+### 2. Install dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Set Up API Key
+### 3. Set your API key
+
+Create a `.env` file in the project root and add:
 
 ```bash
-cp .env.example .env
-# Edit .env and add your Google AI Studio API key
-# Optional: set GEMINI_MODEL (default is gemini-2.0-flash)
-# Optional: set GEMINI_FALLBACK_MODELS for automatic model retry
-# Get one free at: https://aistudio.google.com/app/apikey
+API_KEY=your_groq_api_key_here
+MODEL=llama3-8b-8192
+FALLBACK_MODELS=llama3-70b-8192,mixtral-8x7b-32768
 ```
 
-### 4. Add PDF Documents
+### 4. Add PDFs
 
 Place government PDFs in the appropriate service folders:
 
@@ -108,19 +113,19 @@ data/
 └── health/      # Ayushman Bharat guidelines, PM-JAY docs
 ```
 
-### 5. Build the Index
+### 5. Build the FAISS index
 
 ```bash
 python scripts/build_index.py
 ```
 
-### 6. Run the App
+### 6. Run the app
 
 ```bash
 streamlit run app.py
 ```
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 | Component       | Technology                           |
 |-----------------|---------------------------------------|
@@ -128,21 +133,26 @@ streamlit run app.py
 | Backend         | Python                                |
 | Embeddings      | sentence-transformers/all-MiniLM-L6-v2|
 | Vector Store    | FAISS (faiss-cpu)                     |
-| LLM             | Google Gemini 2.0 Flash               |
+| LLM             | Groq chat completions               |
 | PDF Parsing     | PyPDF2                                |
 | Text Splitting  | LangChain Text Splitters              |
 
-## 📊 Evaluation
+## UI Notes
 
-- **Accuracy**: Responses are grounded in retrieved context only
-- **Relevance**: FAISS cosine similarity for chunk retrieval
-- **Latency**: Optimized for < 3 second response time
-- **Source Transparency**: Every response includes document citations
+- The sidebar is collapsible and leaves a narrow left strip when closed.
+- Dark mode and light mode are persisted in session state.
+- The language selector is English/Hindi only, and the labels are translated from the CSV file.
+- The service filter is localized to the selected UI language.
 
 
-## 🙏 Acknowledgements
 
-- Google Gemini API for response generation
-- Sentence Transformers for embedding models
-- FAISS by Meta AI for vector similarity search
-- Streamlit for the web interface
+## Evaluation
+
+- Responses are grounded in retrieved context.
+- Every assistant answer includes source citations.
+- The system supports follow-up questions through conversation memory.
+
+## Troubleshooting
+
+- If the UI text looks stale, restart Streamlit and hard refresh the browser.
+- If the app cannot answer, rebuild the index and confirm `API_KEY` is set in `.env`.
