@@ -17,3 +17,7 @@ build/
 *.tar.gz
 *.egg
 *.whl
+*.fls
+*.fdb_latexmk
+*.fbd_latexmkrc
+
