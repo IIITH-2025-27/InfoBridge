@@ -85,7 +85,7 @@ def render_chat(service_categories: dict) -> None:
                 generator.memory = st.session_state.memory
         except Exception as exc:
             error_msg = (
-                f"⚠️ {t('LLM is not configured correctly. Please set GOOGLE_API_KEY in .env', lang)}\n\n"
+                f"⚠️ {t('LLM is not configured correctly. Please set API_KEY in .env', lang)}\n\n"
                 f"Error: {exc}"
             )
             st.error(error_msg)

@@ -151,6 +151,7 @@ div[class*="bottom"] {
 }
 .ib-source-card:hover { background:rgba(255,153,51,0.1); }
 .ib-source-card strong { color:#FFD700; font-weight:600; }
+.ib-source-meta { color:rgba(255,255,255,0.45); font-size:0.76rem; }
 
 /* ── Sidebar ──────────────────────────────────────────── */
 section[data-testid="stSidebar"] {
@@ -373,10 +374,18 @@ _LIGHT = """
 [data-testid="stChatMessage"] th,
 [data-testid="stChatMessage"] div {
     color:#1e293b !important;
+    cursor:text !important;
+    user-select:text !important;
+    -webkit-user-select:text !important;
 }
-[data-testid="stChatMessage"] a { color:#c85c00 !important; }
+[data-testid="stChatMessage"] a { color:#c85c00 !important; cursor:pointer !important; }
 [data-testid="stChatMessage"] code { color:#7c2d12 !important; background:rgba(200,92,0,0.08) !important; }
 [data-testid="stChatMessage"]:hover { box-shadow:0 4px 16px rgba(0,0,0,0.08) !important; }
+/* Text selection highlight in light mode */
+[data-testid="stChatMessage"] ::selection {
+    background:rgba(200,92,0,0.18) !important;
+    color:#1e293b !important;
+}
 
 /* ── Chat Input ───────────────────────────────────────── */
 [data-testid="stBottom"],
@@ -390,33 +399,29 @@ div[class*="bottom"] {
     background:#edf0f7 !important;
     border-top:1px solid rgba(0,0,0,0.06) !important;
 }
-[data-testid="stChatInput"],
-[data-testid="stChatInput"] > div,
+/* Single border on outer wrapper only — mirrors dark mode approach */
+[data-testid="stChatInput"] > div {
+    background:#ffffff !important;
+    border:1px solid rgba(200,92,0,0.25) !important;
+    border-radius:16px !important;
+    box-shadow:0 2px 8px rgba(0,0,0,0.05) !important;
+    transition:border-color 0.2s, box-shadow 0.2s !important;
+}
+[data-testid="stChatInput"] > div:focus-within {
+    border-color:rgba(200,92,0,0.55) !important;
+    box-shadow:0 0 0 3px rgba(200,92,0,0.08) !important;
+}
+/* Inner elements: no border, transparent background */
 [data-testid="stChatInput"] > div > div,
-[data-testid="stChatInput"] textarea,
-[data-testid="stChatInput"] [contenteditable="true"],
 [data-testid="stChatInput"] [data-baseweb="base-input"],
 [data-testid="stChatInput"] [data-baseweb="textarea"],
 [data-testid="stChatInput"] [data-baseweb="base-input"] > div,
-[data-testid="stChatInput"] [data-baseweb="textarea"] > div,
-.stChatFloatingInputContainer textarea,
-.stChatFloatingInputContainer [contenteditable="true"] {
-    background:#ffffff !important; border:1px solid rgba(200,92,0,0.25) !important;
-    border-radius:16px !important; transition:border-color 0.2s, box-shadow 0.2s !important;
-    box-shadow:0 2px 8px rgba(0,0,0,0.05) !important;
+[data-testid="stChatInput"] [data-baseweb="textarea"] > div {
+    background:transparent !important;
+    border:none !important;
+    box-shadow:none !important;
 }
-[data-testid="stChatInput"] [data-baseweb="base-input"] > div,
-[data-testid="stChatInput"] [data-baseweb="textarea"] > div,
-[data-testid="stChatInput"] [data-baseweb="base-input"],
-[data-testid="stChatInput"] [data-baseweb="textarea"] {
-    background:#ffffff !important;
-}
-[data-testid="stChatInput"]:focus-within,
-[data-testid="stChatInput"] > div:focus-within,
-[data-testid="stChatInput"] > div > div:focus-within,
-.stChatFloatingInputContainer:focus-within {
-    border-color:rgba(200,92,0,0.55) !important; box-shadow:0 0 0 3px rgba(200,92,0,0.08) !important;
-}
+/* Textarea: text colour, no border */
 [data-testid="stChatInput"] textarea,
 [data-testid="stChatInput"] [contenteditable="true"],
 [data-testid="stChatInput"] [data-baseweb="base-input"] textarea,
@@ -425,13 +430,21 @@ div[class*="bottom"] {
 .stChatFloatingInputContainer [contenteditable="true"] {
     color:#1e293b !important;
     background:transparent !important;
+    border:none !important;
+    box-shadow:none !important;
     font-size:0.95rem !important;
+    caret-color:#c85c00 !important;
+    cursor:text !important;
 }
 [data-testid="stChatInput"] textarea::placeholder,
 [data-testid="stChatInput"] [data-baseweb="base-input"] textarea::placeholder,
 [data-testid="stChatInput"] [data-baseweb="textarea"] textarea::placeholder,
 .stChatFloatingInputContainer textarea::placeholder {
     color:rgba(30,41,59,0.35) !important;
+}
+[data-testid="stChatInput"] textarea::selection {
+    background:rgba(200,92,0,0.18) !important;
+    color:#1e293b !important;
 }
 
 /* ── Expander ─────────────────────────────────────────── */
@@ -453,6 +466,7 @@ div[class*="bottom"] {
 }
 .ib-source-card:hover { background:rgba(200,92,0,0.08); }
 .ib-source-card strong { color:#c85c00; font-weight:600; }
+.ib-source-meta { color:rgba(51,65,85,0.55); font-size:0.76rem; }
 
 /* ── Sidebar ──────────────────────────────────────────── */
 section[data-testid="stSidebar"] {

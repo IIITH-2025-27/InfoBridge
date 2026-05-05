@@ -41,7 +41,7 @@ def render_sidebar(
 
         # Brand header
         st.markdown(
-            """
+            f"""
             <div style="text-align:center; padding: 0.75rem 0 1.25rem 0;">
                 <div style="
                     font-size: 1.55rem;
@@ -55,7 +55,7 @@ def render_sidebar(
                 ">🏛️ InfoBridge</div>
                 <div style="
                     font-size: 0.68rem;
-                    color: rgba(255,255,255,0.35);
+                    color: {'rgba(255,255,255,0.35)' if theme == 'dark' else 'rgba(51,65,85,0.55)'};
                     margin-top: 0.2rem;
                     letter-spacing: 1.5px;
                     text-transform: uppercase;
@@ -257,7 +257,7 @@ def render_sources(sources: list[dict], service_categories: dict, language: str)
             st.markdown(
                 f'<div class="ib-source-card">'
                 f'<strong>{icon} {source_file}</strong><br>'
-                f'<span style="color:rgba(255,255,255,0.45); font-size:0.76rem;">'
+                f'<span class="ib-source-meta">'
                 f'{t(name, language)} &nbsp;·&nbsp; '
                 f'{t("Relevance", language)}: {relevance_text}'
                 f'</span></div>',

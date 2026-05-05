@@ -9,7 +9,7 @@ from typing import Optional
 
 from src.retrieval.retriever import Retriever
 from src.llm.client import llmClient
-from src.llm.prompts import build_prompt, get_output_language_guard, get_system_instruction
+from src.llm.prompts import build_prompt, get_output_language_guard, get_system_instruction, get_general_system_instruction
 from src.memory.chat_memory import ChatMemory
 from config.settings import TOP_K
 from utility.language import normalize_query_llm_cached
@@ -37,6 +37,46 @@ class ResponseGenerator:
         self.retriever = retriever
         self.llm = llm_client or llmClient()
         self.memory = memory or ChatMemory()
+
+    # Patterns that indicate a conversational / general-purpose query that
+    # does NOT need document retrieval.
+    _CONVERSATIONAL_PATTERNS = [
+        r"^(hi|hello|hey|namaste|namaskar|hola|howdy|good\s+(morning|afternoon|evening|day))[\s!.,?]*$",
+        r"^(how are you|how r u|how do you do|what's up|wassup|sup)[\s!.,?]*$",
+        r"^(thanks|thank you|thank you so much|thx|ty|dhanyavaad)[\s!.,?]*$",
+        r"^(bye|goodbye|good bye|see you|see ya|alvida)[\s!.,?]*$",
+        r"(what (can|do) you (do|help|assist|know)|what are your capabilities|what services do you (cover|offer|support|provide))",
+        r"(who are you|what are you|tell me about yourself|introduce yourself)",
+        r"^(ok|okay|got it|i see|sure|alright|great|nice|cool|perfect)[\s!.,?]*$",
+        r"^(yes|no|yep|nope|yeah|nah)[\s!.,?]*$",
+        # Website / portal / contact queries — not answerable from PDF docs
+        r"(website|web site|official\s+site|portal|link|url|web\s+address)",
+        r"(helpline|toll.?free|contact\s+number|phone\s+number|call\s+centre|customer\s+care)",
+        r"(give me the|share the|what is the|provide the).{0,30}(link|url|website|portal|number)",
+    ]
+
+    @classmethod
+    def _is_conversational_query(cls, query: str) -> bool:
+        """Return True if the query is a simple greeting or general question."""
+        import re as _re
+        q = query.strip().lower()
+        # Very short inputs with no government keywords are likely conversational
+        gov_keywords = {
+            "passport", "voter", "driving", "licence", "license", "tax", "itr",
+            "ayushman", "pmjay", "epic", "aadhaar", "pan", "document", "apply",
+            "registration", "certificate", "income", "form", "fee", "eligib",
+            "पासपोर्ट", "वोटर", "लाइसेंस", "आयकर", "आयुष्मान",
+        }
+        has_gov_keyword = any(kw in q for kw in gov_keywords)
+        if has_gov_keyword:
+            return False
+        for pattern in cls._CONVERSATIONAL_PATTERNS:
+            if _re.search(pattern, q, _re.IGNORECASE):
+                return True
+        # Treat very short inputs (≤4 words, no gov keyword) as conversational
+        if len(q.split()) <= 4 and not has_gov_keyword:
+            return True
+        return False
 
     @staticmethod
     def _llm_unavailable(answer: str) -> bool:
@@ -189,19 +229,39 @@ class ResponseGenerator:
         Returns:
             Dict with keys: answer, sources, language, query.
         """
-        # Step 1: Retrieve relevant chunks
+        # Step 0: Language normalisation
         original_query = query
 
         selected_language = (language or "en").strip().lower()
         response_language = selected_language if selected_language in {"en", "hi"} else "en"
 
-        query = query.strip().lower()
+        query_stripped = query.strip()
+        query = query_stripped.lower()
         query = normalize_query_llm_cached(query)
         logger.debug(f"Normalized Query: {query}")
-        
         logger.info(f"Original Query: {original_query}")
         logger.info(f"Processed Query: {query}")
-        
+
+        # Step 1a: Fast path — conversational / general queries bypass RAG
+        if self._is_conversational_query(query_stripped):
+            logger.info("Conversational query detected — skipping retrieval")
+            general_instruction = get_general_system_instruction(response_language)
+            answer = self.llm.generate(
+                prompt=query_stripped,
+                system_instruction=general_instruction,
+            )
+            answer = self._enforce_answer_language(answer=answer, language=response_language)
+            self.memory.add_turn(role="user", content=original_query)
+            self.memory.add_turn(role="assistant", content=answer)
+            return {
+                "answer": answer,
+                "sources": [],
+                "language": response_language,
+                "query": query,
+                "num_chunks_retrieved": 0,
+            }
+
+        # Step 1b: Retrieve relevant chunks for document-based questions
         results = self.retriever.retrieve(
             query=query,
             top_k=top_k,

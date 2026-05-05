@@ -122,7 +122,7 @@ python scripts/build_index.py
 ### 6. Run the app
 
 ```bash
-streamlit run app.py
+streamlit run app.py --server.fileWatcherType none
 ```
 
 ## Technology Stack
