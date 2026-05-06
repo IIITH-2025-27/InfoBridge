@@ -399,27 +399,29 @@ div[class*="bottom"] {
     background:#edf0f7 !important;
     border-top:1px solid rgba(0,0,0,0.06) !important;
 }
-/* Single border on outer wrapper only — mirrors dark mode approach */
-[data-testid="stChatInput"] > div {
+[data-testid="stChatInput"] {
     background:#ffffff !important;
     border:1px solid rgba(200,92,0,0.25) !important;
     border-radius:16px !important;
-    box-shadow:0 2px 8px rgba(0,0,0,0.05) !important;
     transition:border-color 0.2s, box-shadow 0.2s !important;
+    box-shadow:0 2px 8px rgba(0,0,0,0.05) !important;
 }
-[data-testid="stChatInput"] > div:focus-within {
-    border-color:rgba(200,92,0,0.55) !important;
-    box-shadow:0 0 0 3px rgba(200,92,0,0.08) !important;
-}
-/* Inner elements: no border, transparent background */
+[data-testid="stChatInput"] > div,
 [data-testid="stChatInput"] > div > div,
 [data-testid="stChatInput"] [data-baseweb="base-input"],
 [data-testid="stChatInput"] [data-baseweb="textarea"],
-[data-testid="stChatInput"] [data-baseweb="base-input"] > div,
-[data-testid="stChatInput"] [data-baseweb="textarea"] > div {
+.stChatFloatingInputContainer > div,
+.stChatFloatingInputContainer [data-baseweb="base-input"],
+.stChatFloatingInputContainer [data-baseweb="textarea"] {
     background:transparent !important;
     border:none !important;
     box-shadow:none !important;
+}
+[data-testid="stChatInput"]:focus-within,
+[data-testid="stChatInput"] > div:focus-within,
+[data-testid="stChatInput"] > div > div:focus-within,
+.stChatFloatingInputContainer:focus-within {
+    border-color:rgba(200,92,0,0.55) !important; box-shadow:0 0 0 3px rgba(200,92,0,0.08) !important;
 }
 /* Textarea: text colour, no border */
 [data-testid="stChatInput"] textarea,
@@ -431,7 +433,6 @@ div[class*="bottom"] {
     color:#1e293b !important;
     background:transparent !important;
     border:none !important;
-    box-shadow:none !important;
     font-size:0.95rem !important;
     caret-color:#c85c00 !important;
     cursor:text !important;

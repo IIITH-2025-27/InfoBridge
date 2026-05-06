@@ -33,6 +33,7 @@ class Retriever:
         query: str,
         top_k: int = TOP_K,
         service_filter: Optional[str] = None,
+        unique_sources: bool = True,
     ) -> list[dict]:
 
         # STEP 1: Normalize query using LLM
@@ -45,11 +46,34 @@ class Retriever:
         query_embedding = self.embedder.encode_query(query)
 
         #  STEP 3: Retrieval
+        request_top_k = top_k * 5 if unique_sources else top_k
+
         results = self.vector_store.search(
             query_embedding=query_embedding,
-            top_k=top_k,
+            top_k=request_top_k,
             service_filter=service_filter,
         )
+
+        if unique_sources and results:
+            unique_results = []
+            seen_sources: set[tuple[str, str]] = set()
+
+            for result in results:
+                meta = result.get("metadata", {})
+                source_file = str(meta.get("source_file", ""))
+                service_type = str(meta.get("service_type", ""))
+                key = (source_file, service_type)
+
+                if key in seen_sources:
+                    continue
+
+                seen_sources.add(key)
+                unique_results.append(result)
+
+                if len(unique_results) >= top_k:
+                    break
+
+            results = unique_results
 
         if not results:
             logger.warning(f"No results found for query: '{query}'")
@@ -105,21 +129,23 @@ class Retriever:
         Returns:
             List of citation dicts with source details.
         """
-        citation_map: dict[tuple[str, str, str], dict] = {}
+        citation_map: dict[tuple[str, str], dict] = {}
 
         for result in results:
             metadata = result.get("metadata", {})
             source_file = str(metadata.get("source_file", "Unknown"))
+            source_path = str(metadata.get("source_path", ""))
             page = str(metadata.get("page", "?"))
             service_type = str(metadata.get("service_type", "unknown"))
             relevance_score = float(result.get("score", 0.0))
 
-            key = (source_file, page, service_type)
+            key = (source_file, service_type)
             existing = citation_map.get(key)
 
             if existing is None or relevance_score > float(existing.get("relevance_score", 0.0)):
                 citation_map[key] = {
                     "source_file": source_file,
+                    "source_path": source_path,
                     "page": page,
                     "service_type": service_type,
                     "relevance_score": relevance_score,
