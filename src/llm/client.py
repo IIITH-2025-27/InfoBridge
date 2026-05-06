@@ -43,6 +43,7 @@ class llmClient:
         last_error = ""
         model_not_found = False
         quota_error = False
+        decommissioned_error = False
 
         for model_name in self._candidate_models():
             try:
@@ -77,12 +78,24 @@ class llmClient:
                 error_text = str(e)
                 last_error = error_text
 
-                if "404" in error_text:
-                    model_not_found = True
+                lower = error_text.lower()
+
+                # Model decommissioned or removed (seen as 400 with message)
+                if "decommission" in lower or "decommissioned" in lower:
+                    decommissioned_error = True
+                    logger.warning(f"Model '{model_name}' appears to be decommissioned; skipping.")
                     continue
 
+                # Not found (404)
+                if "404" in error_text:
+                    model_not_found = True
+                    logger.warning(f"Model not found: {model_name}")
+                    continue
+
+                # Rate limit / quota
                 if "429" in error_text:
                     quota_error = True
+                    logger.warning(f"Quota/rate limit encountered for model: {model_name}")
                     continue
 
                 logger.error(f"LLM error ({model_name}): {error_text}")
@@ -90,10 +103,13 @@ class llmClient:
         if quota_error:
             return "Quota exceeded. Try again later."
 
+        if decommissioned_error and model_not_found:
+            return "Configured model(s) are unavailable or decommissioned. Please update MODEL/FALLBACK_MODELS in .env."
+
         if model_not_found:
             return "Model not found. Check MODEL config."
 
         if last_error:
-            return f"Error: {last_error[:100]}"
+            return f"Error: {last_error[:200]}"
 
         return "Failed to generate response."
