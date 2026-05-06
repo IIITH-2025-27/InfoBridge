@@ -227,8 +227,87 @@ def render_header(language: str, theme: str = "dark") -> None:
 
 # ─── Sources ──────────────────────────────────────────────────────────────────
 
+def _find_pdf_path(source_file: str, service_type: str) -> str | None:
+    """Locate the actual PDF file on disk given its filename and service type."""
+    from config.settings import DATA_DIR
+
+    # Primary: look inside the service-specific subdirectory
+    candidate = DATA_DIR / service_type / source_file
+    if candidate.exists():
+        return str(candidate)
+
+    # Fallback: search all service subdirectories
+    for subdir in DATA_DIR.iterdir():
+        if subdir.is_dir():
+            candidate = subdir / source_file
+            if candidate.exists():
+                return str(candidate)
+
+    return None
+
+
+def _render_pdf_viewer(pdf_path: str, initial_page: int, viewer_id: str) -> None:
+    """Render a specific PDF page as an image (Safari/mobile safe) with pagination."""
+    import fitz
+    import streamlit as st
+
+    try:
+        doc = fitz.open(pdf_path)
+        total_pages = len(doc)
+        
+        # State for pagination
+        page_key = f"page_{viewer_id}"
+        if page_key not in st.session_state:
+            st.session_state[page_key] = max(1, min(initial_page, total_pages))
+
+        current_page = st.session_state[page_key]
+        
+        # Pagination controls
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col1:
+            if st.button("⬅️ Prev", key=f"prev_{viewer_id}", use_container_width=True, disabled=(current_page <= 1)):
+                st.session_state[page_key] -= 1
+                st.rerun()
+        with col2:
+            st.markdown(f"<div style='text-align: center; padding-top: 0.5rem; font-weight: 600; color: rgba(255,153,51,0.9);'>Page {current_page} of {total_pages}</div>", unsafe_allow_html=True)
+        with col3:
+            if st.button("Next ➡️", key=f"next_{viewer_id}", use_container_width=True, disabled=(current_page >= total_pages)):
+                st.session_state[page_key] += 1
+                st.rerun()
+
+        # Render page
+        page_idx = current_page - 1
+        page_obj = doc.load_page(page_idx)
+        
+        # 2x zoom for crisp text rendering
+        mat = fitz.Matrix(2.0, 2.0)
+        pix = page_obj.get_pixmap(matrix=mat)
+        img_bytes = pix.tobytes("png")
+
+        st.markdown(
+            """
+            <style>
+            .pdf-image-container img {
+                border: 1px solid rgba(255,153,51,0.25);
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                margin-top: 0.5rem;
+                margin-bottom: 0.5rem;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+        st.markdown('<div class="pdf-image-container">', unsafe_allow_html=True)
+        st.image(img_bytes, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    except Exception as e:
+        st.error(f"Failed to render PDF: {e}")
+
+
 def render_sources(sources: list[dict], service_categories: dict, language: str) -> None:
-    """Render source citations as an expandable section."""
+    """Render source citations as an expandable section with inline PDF viewing."""
     if not sources:
         return
 
@@ -236,7 +315,7 @@ def render_sources(sources: list[dict], service_categories: dict, language: str)
     document_label = t("documents", language)
 
     with st.expander(f"📎  {label} ({len(sources)} {document_label})", expanded=False):
-        for src in sources:
+        for idx, src in enumerate(sources):
             if isinstance(src, str):
                 st.markdown(
                     f'<div class="ib-source-card"><strong>📄 {src}</strong></div>',
@@ -248,21 +327,55 @@ def render_sources(sources: list[dict], service_categories: dict, language: str)
             icon = service_categories.get(service_type, {}).get("icon", "📄")
             name = service_categories.get(service_type, {}).get("name", service_type.title())
             source_file = src.get("source_file", "Unknown")
+            page = src.get("page", "1")
             relevance_score = src.get("relevance_score")
 
             relevance_text = (
                 f"{relevance_score:.0%}" if isinstance(relevance_score, (int, float)) else "N/A"
             )
 
+            page_label = t("Page", language)
+            view_label = t("View PDF", language)
+
             st.markdown(
                 f'<div class="ib-source-card">'
                 f'<strong>{icon} {source_file}</strong><br>'
                 f'<span class="ib-source-meta">'
                 f'{t(name, language)} &nbsp;·&nbsp; '
+                f'{page_label}: {page} &nbsp;·&nbsp; '
                 f'{t("Relevance", language)}: {relevance_text}'
                 f'</span></div>',
                 unsafe_allow_html=True,
             )
+
+            # Unique key for each source's viewer toggle
+            state_key = f"show_pdf_{idx}_{source_file}"
+            if state_key not in st.session_state:
+                st.session_state[state_key] = False
+
+            hide_label = t("Hide PDF", language) if t("Hide PDF", language) != "Hide PDF" else ("पीडीएफ छुपाएं" if language == "hi" else "Hide PDF")
+            button_label = f"📖 {hide_label}" if st.session_state[state_key] else f"📖 {view_label} — {source_file}"
+
+            if st.button(
+                button_label,
+                key=f"btn_{state_key}",
+                use_container_width=True,
+            ):
+                st.session_state[state_key] = not st.session_state[state_key]
+                st.rerun()
+
+            if st.session_state[state_key]:
+                pdf_path = _find_pdf_path(source_file, service_type)
+                if pdf_path:
+                    try:
+                        page_int = int(page) if str(page).isdigit() else 1
+                    except (ValueError, TypeError):
+                        page_int = 1
+                    _render_pdf_viewer(pdf_path, initial_page=page_int, viewer_id=state_key)
+                else:
+                    st.warning(
+                        f"⚠️ {t('PDF file not found on server', language)}: {source_file}"
+                    )
 
 
 # ─── Welcome Screen ───────────────────────────────────────────────────────────
