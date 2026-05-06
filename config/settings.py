@@ -67,6 +67,8 @@ CHUNK_OVERLAP = 100     # preserves context across chunks
 # ─── Retrieval Configuration ────────────────────────────────────────────────
 TOP_K = 5
 SIMILARITY_THRESHOLD = 0.3  # used in FAISS filtering
+# If the best matching chunk score is below this, treat as no relevant documents
+MIN_ANSWER_SCORE = 0.45
 
 # ─── FAISS Configuration ────────────────────────────────────────────────────
 FAISS_INDEX_FILE = VECTORSTORE_DIR / "faiss_index.bin"

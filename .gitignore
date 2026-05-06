@@ -20,4 +20,4 @@ build/
 *.fls
 *.fdb_latexmk
 *.fbd_latexmkrc
-
+.env

@@ -9,9 +9,10 @@ from typing import Optional
 
 from src.retrieval.retriever import Retriever
 from src.llm.client import llmClient
+from src.llm.general_responses import get_general_query_response
 from src.llm.prompts import build_prompt, get_output_language_guard, get_system_instruction
 from src.memory.chat_memory import ChatMemory
-from config.settings import TOP_K
+from config.settings import TOP_K, MIN_ANSWER_SCORE
 from utility.language import normalize_query_llm_cached
 
 logger = logging.getLogger(__name__)
@@ -82,6 +83,36 @@ class ResponseGenerator:
             lines.append(f"\n{snippet_label} {i + 1} ({source} | {service}):\n{excerpt}")
 
         return "\n".join(lines)
+
+    @staticmethod
+    def _strip_inline_sources(answer: str) -> str:
+        """Remove inline source/citation lines from model output so sources stay in the UI dropdown."""
+        if not answer:
+            return answer
+
+        cleaned_lines = []
+        for line in answer.splitlines():
+            normalized = line.strip().lower()
+            if not normalized:
+                cleaned_lines.append(line)
+                continue
+
+            if (
+                normalized.startswith("source:")
+                or normalized.startswith("sources:")
+                or normalized.startswith("[source:")
+                or normalized.startswith("[sources:")
+                or normalized.startswith("स्रोत:")
+                or normalized.startswith("[स्रोत:")
+                or "document reference" in normalized
+                or "document references" in normalized
+            ):
+                continue
+
+            cleaned_lines.append(line)
+
+        cleaned_answer = "\n".join(cleaned_lines).strip()
+        return cleaned_answer or answer
 
     @staticmethod
     def _looks_hinglish_romanized(text: str) -> bool:
@@ -195,6 +226,19 @@ class ResponseGenerator:
         selected_language = (language or "en").strip().lower()
         response_language = selected_language if selected_language in {"en", "hi"} else "en"
 
+        general_response = get_general_query_response(original_query, response_language)
+        if general_response:
+            self.memory.add_turn(role="user", content=original_query)
+            self.memory.add_turn(role="assistant", content=general_response)
+            return {
+                "answer": general_response,
+                "sources": [],
+                "show_sources": False,
+                "language": response_language,
+                "query": original_query.strip().lower(),
+                "num_chunks_retrieved": 0,
+            }
+
         query = query.strip().lower()
         query = normalize_query_llm_cached(query)
         logger.debug(f"Normalized Query: {query}")
@@ -207,6 +251,13 @@ class ResponseGenerator:
             top_k=top_k,
             service_filter=service_filter,
         )
+
+        # If retrieval returns only weak matches (top score below MIN_ANSWER_SCORE),
+        # treat as no results so the model will explicitly say information is unavailable.
+        if results:
+            top_score = max(r.get("score", 0.0) for r in results)
+            if top_score < MIN_ANSWER_SCORE:
+                results = []
 
         # Step 2: Format context
         context = self.retriever.format_context(results)
@@ -261,8 +312,11 @@ class ResponseGenerator:
             )
 
         answer = self._enforce_answer_language(answer=answer, language=response_language)
+        answer = self._strip_inline_sources(answer)
 
+        used_retrieval_fallback = False
         if self._llm_unavailable(answer):
+            used_retrieval_fallback = True
             answer = self._build_retrieval_fallback(results=results, language=response_language)
 
         # Step 6: Update conversation memory
@@ -272,6 +326,7 @@ class ResponseGenerator:
         response = {
             "answer": answer,
             "sources": citations,
+            "show_sources": bool(citations) and not used_retrieval_fallback,
             "language": response_language,
             "query": query,
             "num_chunks_retrieved": len(results),

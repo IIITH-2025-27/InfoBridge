@@ -390,26 +390,23 @@ div[class*="bottom"] {
     background:#edf0f7 !important;
     border-top:1px solid rgba(0,0,0,0.06) !important;
 }
-[data-testid="stChatInput"],
-[data-testid="stChatInput"] > div,
-[data-testid="stChatInput"] > div > div,
-[data-testid="stChatInput"] textarea,
-[data-testid="stChatInput"] [contenteditable="true"],
-[data-testid="stChatInput"] [data-baseweb="base-input"],
-[data-testid="stChatInput"] [data-baseweb="textarea"],
-[data-testid="stChatInput"] [data-baseweb="base-input"] > div,
-[data-testid="stChatInput"] [data-baseweb="textarea"] > div,
-.stChatFloatingInputContainer textarea,
-.stChatFloatingInputContainer [contenteditable="true"] {
-    background:#ffffff !important; border:1px solid rgba(200,92,0,0.25) !important;
-    border-radius:16px !important; transition:border-color 0.2s, box-shadow 0.2s !important;
+[data-testid="stChatInput"] {
+    background:#ffffff !important;
+    border:1px solid rgba(200,92,0,0.25) !important;
+    border-radius:16px !important;
+    transition:border-color 0.2s, box-shadow 0.2s !important;
     box-shadow:0 2px 8px rgba(0,0,0,0.05) !important;
 }
-[data-testid="stChatInput"] [data-baseweb="base-input"] > div,
-[data-testid="stChatInput"] [data-baseweb="textarea"] > div,
+[data-testid="stChatInput"] > div,
+[data-testid="stChatInput"] > div > div,
 [data-testid="stChatInput"] [data-baseweb="base-input"],
-[data-testid="stChatInput"] [data-baseweb="textarea"] {
-    background:#ffffff !important;
+[data-testid="stChatInput"] [data-baseweb="textarea"],
+.stChatFloatingInputContainer > div,
+.stChatFloatingInputContainer [data-baseweb="base-input"],
+.stChatFloatingInputContainer [data-baseweb="textarea"] {
+    background:transparent !important;
+    border:none !important;
+    box-shadow:none !important;
 }
 [data-testid="stChatInput"]:focus-within,
 [data-testid="stChatInput"] > div:focus-within,
@@ -425,6 +422,7 @@ div[class*="bottom"] {
 .stChatFloatingInputContainer [contenteditable="true"] {
     color:#1e293b !important;
     background:transparent !important;
+    border:none !important;
     font-size:0.95rem !important;
 }
 [data-testid="stChatInput"] textarea::placeholder,

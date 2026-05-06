@@ -2,11 +2,41 @@
 
 from __future__ import annotations
 
+from functools import partial
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+import threading
 from typing import Callable, Optional
+from urllib.parse import quote
 
 import streamlit as st
 
+from config.settings import DATA_DIR
 from frontend.i18n import t
+
+_pdf_server = None
+_pdf_server_thread = None
+_pdf_server_port = None
+
+
+def _ensure_pdf_server_url() -> str | None:
+    global _pdf_server, _pdf_server_thread, _pdf_server_port
+
+    if _pdf_server and _pdf_server_thread and _pdf_server_thread.is_alive():
+        return f"http://localhost:{_pdf_server_port}"
+
+    handler = partial(SimpleHTTPRequestHandler, directory=str(DATA_DIR))
+    try:
+        server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    except OSError:
+        return None
+
+    _pdf_server = server
+    _pdf_server_port = server.server_address[1]
+    _pdf_server_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    _pdf_server_thread.start()
+
+    return f"http://localhost:{_pdf_server_port}"
 
 
 # ─── Sidebar ──────────────────────────────────────────────────────────────────
@@ -248,21 +278,48 @@ def render_sources(sources: list[dict], service_categories: dict, language: str)
             icon = service_categories.get(service_type, {}).get("icon", "📄")
             name = service_categories.get(service_type, {}).get("name", service_type.title())
             source_file = src.get("source_file", "Unknown")
+            source_path = src.get("source_path", "")
             relevance_score = src.get("relevance_score")
 
             relevance_text = (
                 f"{relevance_score:.0%}" if isinstance(relevance_score, (int, float)) else "N/A"
             )
 
-            st.markdown(
-                f'<div class="ib-source-card">'
-                f'<strong>{icon} {source_file}</strong><br>'
-                f'<span style="color:rgba(255,255,255,0.45); font-size:0.76rem;">'
-                f'{t(name, language)} &nbsp;·&nbsp; '
-                f'{t("Relevance", language)}: {relevance_text}'
-                f'</span></div>',
-                unsafe_allow_html=True,
-            )
+            resolved_path = None
+
+            if source_path:
+                pdf_path = Path(source_path)
+                if pdf_path.exists() and pdf_path.is_file():
+                    resolved_path = pdf_path
+
+            if resolved_path is None:
+                fallback_path = DATA_DIR / service_type / source_file
+                if fallback_path.exists() and fallback_path.is_file():
+                    resolved_path = fallback_path
+
+            title_html = f"{icon} {source_file}"
+            if resolved_path is not None:
+                server_url = _ensure_pdf_server_url()
+                if server_url:
+                    relative_path = f"{service_type}/{source_file}"
+                    file_url = f"{server_url}/{quote(relative_path, safe='/')}"
+                    title_html = (
+                        f'<a href="{file_url}" target="_blank" rel="noopener noreferrer" '
+                        f'style="color:#FFD700; text-decoration:none;">'
+                        f"{icon} {source_file}"
+                        "</a>"
+                    )
+
+            with st.container():
+                st.markdown(
+                    f'<div class="ib-source-card">'
+                    f'<strong>{title_html}</strong><br>'
+                    f'<span class="ib-source-meta">'
+                    f'{t(name, language)} &nbsp;·&nbsp; '
+                    f'{t("Relevance", language)}: {relevance_text}'
+                    f'</span></div>',
+                    unsafe_allow_html=True,
+                )
 
 
 # ─── Welcome Screen ───────────────────────────────────────────────────────────

@@ -9,18 +9,31 @@ from frontend.ui_components import render_sources
 from src.llm.generator import ResponseGenerator
 
 
-def _scroll_to_chat_input() -> None:
-    """Scroll viewport to the chat input after a response is rendered."""
+def _scroll_to_latest_message() -> None:
+    """Scroll viewport to the newest chat message after a response or question is rendered."""
     components.html(
         """
         <script>
         const doc = window.parent.document;
-        const inputs = doc.querySelectorAll('[data-testid="stChatInput"]');
-        if (inputs.length > 0) {
-            inputs[inputs.length - 1].scrollIntoView({ behavior: 'smooth', block: 'center' });
-        } else {
-            window.parent.scrollTo({ top: doc.body.scrollHeight, behavior: 'smooth' });
-        }
+        const scrollToLatest = () => {
+            const messages = doc.querySelectorAll('[data-testid="stChatMessage"]');
+            if (messages.length > 0) {
+                messages[messages.length - 1].scrollIntoView({ behavior: 'smooth', block: 'end' });
+            } else {
+                window.parent.scrollTo({ top: doc.body.scrollHeight, behavior: 'smooth' });
+            }
+        };
+
+        let tries = 0;
+        const tick = () => {
+            scrollToLatest();
+            tries += 1;
+            if (tries < 10) {
+                window.setTimeout(tick, 50);
+            }
+        };
+
+        tick();
         </script>
         """,
         height=0,
@@ -32,7 +45,11 @@ def render_chat(service_categories: dict) -> None:
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-            if message["role"] == "assistant" and "sources" in message:
+            if (
+                message["role"] == "assistant"
+                and "sources" in message
+                and message.get("show_sources", True)
+            ):
                 render_sources(
                     sources=message["sources"],
                     service_categories=service_categories,
@@ -55,6 +72,7 @@ def render_chat(service_categories: dict) -> None:
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
+    _scroll_to_latest_message()
 
     with st.chat_message("assistant"):
         pipeline, error = load_pipeline()
@@ -70,7 +88,7 @@ def render_chat(service_categories: dict) -> None:
                 "role": "assistant",
                 "content": error_msg,
             })
-            _scroll_to_chat_input()
+            _scroll_to_latest_message()
             return
 
         try:
@@ -93,7 +111,7 @@ def render_chat(service_categories: dict) -> None:
                 "role": "assistant",
                 "content": error_msg,
             })
-            _scroll_to_chat_input()
+            _scroll_to_latest_message()
             return
 
         spinner_text = t("Searching documents and generating response...", lang)
@@ -105,16 +123,18 @@ def render_chat(service_categories: dict) -> None:
             )
 
         st.markdown(response["answer"])
-        render_sources(
-            sources=response["sources"],
-            service_categories=service_categories,
-            language=lang,
-        )
+        if response.get("show_sources", True):
+            render_sources(
+                sources=response["sources"],
+                service_categories=service_categories,
+                language=lang,
+            )
 
         st.session_state.messages.append({
             "role": "assistant",
             "content": response["answer"],
             "sources": response["sources"],
+            "show_sources": response.get("show_sources", True),
         })
         st.session_state.memory = generator.memory
-        _scroll_to_chat_input()
+        _scroll_to_latest_message()
