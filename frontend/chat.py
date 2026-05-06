@@ -32,7 +32,11 @@ def render_chat(service_categories: dict) -> None:
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-            if message["role"] == "assistant" and "sources" in message:
+            if (
+                message["role"] == "assistant"
+                and "sources" in message
+                and message.get("show_sources", True)
+            ):
                 render_sources(
                     sources=message["sources"],
                     service_categories=service_categories,
@@ -105,16 +109,18 @@ def render_chat(service_categories: dict) -> None:
             )
 
         st.markdown(response["answer"])
-        render_sources(
-            sources=response["sources"],
-            service_categories=service_categories,
-            language=lang,
-        )
+        if response.get("show_sources", True):
+            render_sources(
+                sources=response["sources"],
+                service_categories=service_categories,
+                language=lang,
+            )
 
         st.session_state.messages.append({
             "role": "assistant",
             "content": response["answer"],
             "sources": response["sources"],
+            "show_sources": response.get("show_sources", True),
         })
         st.session_state.memory = generator.memory
         _scroll_to_chat_input()
