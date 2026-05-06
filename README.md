@@ -78,6 +78,12 @@ InfoBridge/
 python -m venv .venv
 ```
 
+Linux/macOS:
+
+```bash
+source .venv/bin/activate
+```
+
 Windows:
 
 ```bash
