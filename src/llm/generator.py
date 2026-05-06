@@ -85,6 +85,36 @@ class ResponseGenerator:
         return "\n".join(lines)
 
     @staticmethod
+    def _strip_inline_sources(answer: str) -> str:
+        """Remove inline source/citation lines from model output so sources stay in the UI dropdown."""
+        if not answer:
+            return answer
+
+        cleaned_lines = []
+        for line in answer.splitlines():
+            normalized = line.strip().lower()
+            if not normalized:
+                cleaned_lines.append(line)
+                continue
+
+            if (
+                normalized.startswith("source:")
+                or normalized.startswith("sources:")
+                or normalized.startswith("[source:")
+                or normalized.startswith("[sources:")
+                or normalized.startswith("स्रोत:")
+                or normalized.startswith("[स्रोत:")
+                or "document reference" in normalized
+                or "document references" in normalized
+            ):
+                continue
+
+            cleaned_lines.append(line)
+
+        cleaned_answer = "\n".join(cleaned_lines).strip()
+        return cleaned_answer or answer
+
+    @staticmethod
     def _looks_hinglish_romanized(text: str) -> bool:
         tokens = re.findall(r"[a-zA-Z']+", (text or "").lower())
         if not tokens:
@@ -282,6 +312,7 @@ class ResponseGenerator:
             )
 
         answer = self._enforce_answer_language(answer=answer, language=response_language)
+        answer = self._strip_inline_sources(answer)
 
         used_retrieval_fallback = False
         if self._llm_unavailable(answer):
