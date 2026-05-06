@@ -17,6 +17,14 @@ GENERAL_QUERY_DICTIONARY = {
             "good afternoon",
             "good evening",
             "good day",
+            "greetings",
+            "how can you help",
+            "how can you assist",
+            "how can you help me",
+            "how can you assist me",
+            "what can you do",
+            "what do you do?",
+            "how are you"
         ),
         "hi": (
             "हाय",
