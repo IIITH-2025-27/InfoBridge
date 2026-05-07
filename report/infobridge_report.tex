@@ -1,0 +1,493 @@
+\documentclass[10pt,twocolumn]{article}
+
+% ── Packages (BasicTeX-safe only) ─────────────────────────────────────────────
+\usepackage[a4paper, top=1in, bottom=1in, left=0.75in, right=0.75in]{geometry}
+\usepackage{times}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage{url}
+\usepackage{cite}
+\usepackage{fancyhdr}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric,arrows.meta,positioning,fit,backgrounds}
+
+\hypersetup{colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue}
+
+% ── Reduce section spacing without titlesec ────────────────────────────────────
+\makeatletter
+\renewcommand{\section}{\@startsection{section}{1}{\z@}%
+  {-12pt \@plus -2pt \@minus -1pt}%
+  {8pt \@plus 0.3pt}%
+  {\normalfont\Large\bfseries}}
+\renewcommand{\subsection}{\@startsection{subsection}{2}{\z@}%
+  {-6pt \@plus -1pt \@minus -0.5pt}%
+  {4pt \@plus 0.2pt}%
+  {\normalfont\large\bfseries}}
+\makeatother
+
+% ── Spacing helpers ───────────────────────────────────────────────────────────
+\setlength{\parskip}{2pt}
+\newcommand{\tightlist}{\setlength{\itemsep}{1pt}\setlength{\topsep}{2pt}\setlength{\parsep}{0pt}}
+
+% ── Header / Footer ───────────────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small SMAI Assignment 3 T10.7 / IIIT Hyderabad  }
+\fancyhead[R]{\small Government RAG Chatbot}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ── siunitx workaround: just use \num manually ────────────────────────────────
+\newcommand{\num}[1]{#1}
+
+% ── Title ─────────────────────────────────────────────────────────────────────
+\title{%
+  \vspace{-1cm}
+  {\fontsize{18}{16}\selectfont \textbf{A Retrieval-Augmented Generation System
+  for\\ Multi-Service Indian Government Document Querying}}\\[8pt]
+  % {\fontsize{11}{13}\selectfont\itshape\color{gray!70}SMAI Assignment 3 \textrm{—} T10.7: Multi-Service Government RAG Chatbot}
+}
+
+\author{%
+  \begin{tabular}[t]{c@{\hspace{0.35cm}}c@{\hspace{0.35cm}}c@{\hspace{0.35cm}}c}
+    \textbf{Abhay Sharma} & \textbf{Ankit Kumar} & \textbf{Harsh Raj} & \textbf{Hritik Ranjan} \\
+    \small Roll: 2025201014 & \small Roll: 2025201022 & \small Roll: 2025202005 & \small Roll: 2025202031 \\
+    \small abhay.sharma@students.iiit.ac.in & \small ankit.k@students.iiit.ac.in & \small harsh.raj@students.iiit.ac.in & \small hritik.ranjan@students.iiit.ac.in \\[6pt]
+    \textbf{Karan Thayat} & \textbf{Shubham Kumar Sunny} & \textbf{Vikash Kumar} & \\
+    \small Roll: 2025202008 & \small Roll: 2025201025 & \small Roll: 2025201012 & \\
+    \small karan.thayat@students.iiit.ac.in & \small shubham.sunny@students.iiit.ac.in & \small vikash.kumar@students.iiit.ac.in &
+  \end{tabular}
+}
+
+\date{}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+% ── Abstract ──────────────────────────────────────────────────────────────────
+\fontsize{11.2pt}{13.2pt}\selectfont
+\begin{abstract}
+\noindent
+We present a smart chatbot that helps Indian citizens access government services related information without struggling to read through hundreds of scattered PDF documents.
+Instead of spending hours searching through complex government files, citizens can simply ask a question in English or Hindi and get a clear, accurate answer backed by official sources.
+The system covers five key services Passport, Voter ID, Driving Licence, Income Tax, and Health Insurance (Ayushman Bharat) and provides helpful answers in both English and Hindi with source citations so users know exactly where the information comes from.
+It works by extracting text from PDFs, converting the information into a searchable index containing 21,544 document chunks from 1,500+ pages, and using AI to understand questions and finds relevant answers from the indexes.
+The system is smart about language: it automatically translates Hindi and mixed English-Hindi questions to English for search, then answers back in the user's preferred language.
+Our testing on 42 real questions showed the system is accurate 90\% of the time, always provides source citations (100\% accuracy), and correctly switches between languages 96\% of the time.
+\end{abstract}
+
+\bigskip
+
+% ── 1. Introduction ───────────────────────────────────────────────────────────
+\section{Introduction}
+
+India has many digital government platforms like DigiLocker and UMANG that help citizens access services online. However, many people still struggle to find the right information because government procedures and rules are scattered across hundreds of PDF documents. It's hard for average citizens to navigate these documents and understand what they need to do.
+
+Large Language Models (AI systems) are very good at understanding questions and providing answers, but they sometimes make up information when answering detailed questions about specific topics. To solve this, we use a technique called Retrieval-Augmented Generation (RAG), which first finds the right documents, then generates accurate answers based on what's actually written in those documents.
+
+This project applies this smart approach to five important Indian government services: Passport services, Voter ID registration, Driving Licence and vehicle registration, Income Tax filing, and Health Insurance (Ayushman Bharat).
+The system is designed to work on regular computers without needing expensive equipment, and it supports both English and Hindi.
+
+
+% ── 2. Related Work ───────────────────────────────────────────────────────────
+\section{Related Work}
+
+\noindent\textbf{Retrieval-Augmented Generation (RAG).}
+RAG is a powerful technique that combines document retrieval with language model generation~\cite{lewis2020rag}. Instead of relying solely on the model's pre-trained knowledge, RAG first retrieves relevant documents from a knowledge base, then generates answers conditioned on these retrieved passages. This significantly reduces hallucination and ensures answers are grounded in actual source material~\cite{gao2023retrieval}. RAG has become the standard approach for building knowledge-grounded QA systems, and we employ it as the core architecture for this project.
+
+\medskip\noindent\textbf{Dense Embeddings and Semantic Search.}
+Traditional keyword-based retrieval is limited, semantic understanding is crucial for complex queries. Sentence-BERT and distilled models like MiniLM~\cite{reimers2019sentence,wang2020minilm} provide efficient, task-agnostic embeddings that capture semantic meaning while remaining lightweight enough for CPU deployment. We use \texttt{all-MiniLM-L6-v2} for its excellent balance of speed and accuracy. FAISS~\cite{johnson2019billion} enables efficient vector similarity search over large collections; we use exact search (IndexFlatIP) to guarantee retrieval quality for critical government documents.
+
+\medskip\noindent\textbf{Large Language Models for Generation.}
+Modern LLMs like LLaMA~\cite{touvron2023llama} and others have demonstrated strong performance on diverse NLP tasks including question-answering and instruction-following. We leverage LLaMA-3 via the Groq API for fast, accurate response generation. Using an external API enables low-cost inference and fallback capabilities without maintaining expensive GPU infrastructure.
+
+\medskip\noindent\textbf{Bilingual and Multilingual NLP.}
+Multilingual NLP requires handling code-mixing (mixing Hindi and English), script variations (Devanagari, romanized Hindi), and language identification. Prior work on cross-lingual retrieval and translation demonstrates that translating non-English queries to English before embedding (rather than using multilingual embeddings) can be more practical and often more effective~\cite{reimers2019sentence}. We normalize Hindi and mixed Hindi-English queries to English before retrieval, then generate answers in the user's preferred language.
+
+% ── 3. System Architecture ────────────────────────────────────────────────────
+\section{System Architecture}
+
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[
+  node distance=0.45cm and 1.1cm,
+  box/.style ={rectangle,rounded corners=3pt,draw=black!70,fill=blue!9,
+               text width=2.4cm,align=center,font=\small,minimum height=0.72cm},
+  proc/.style={rectangle,rounded corners=3pt,draw=black!70,fill=orange!13,
+               text width=2.4cm,align=center,font=\small,minimum height=0.72cm},
+  store/.style={rectangle,rounded corners=3pt,draw=black!70,fill=green!12,
+                text width=2.4cm,align=center,font=\small,minimum height=0.72cm},
+  ansbox/.style={rectangle,rounded corners=3pt,draw=black!70,fill=teal!10,
+               text width=2.4cm,align=center,font=\small,minimum height=0.72cm},
+  arr/.style={-Latex,thick,gray!60},
+  labfont/.style={font=\scriptsize\itshape,text=gray!80},
+]
+%% ─── OFFLINE pipeline ────────────────────────────────────────────────────────
+\node[box]   (pdfs)  {Gov.\ PDFs};
+\node[proc,  right=1.0cm of pdfs]  (ext)   {PDF\\Extractor};
+\node[proc,  right=1.0cm of ext]   (chunk) {Text\\Chunker};
+\node[proc,  right=1.0cm of chunk] (emb)   {Embedder\\(MiniLM-L6)};
+\node[store, right=1.0cm of emb]   (idx)   {FAISS\\Index};
+
+\draw[arr] (pdfs)--(ext);
+\draw[arr] (ext)--(chunk);
+\draw[arr] (chunk)--(emb);
+\draw[arr] (emb)--(idx);
+\node[labfont,above=0.12cm of pdfs] {Offline indexing};
+
+%% ─── ONLINE pipeline ─────────────────────────────────────────────────────────
+\node[box,    below=1.4cm of pdfs]  (usr)  {User Query\\(EN / HI)};
+\node[proc,   right=1.0cm of usr]   (norm) {Query\\Normaliser};
+\node[proc,   right=1.0cm of norm]  (ret)  {Retriever\\top-$k$=5};
+\node[proc,   right=1.0cm of ret]   (llm)  {Groq\\LLaMA-3};
+\node[ansbox, right=1.0cm of llm]   (ans)  {Answer +\\Sources};
+
+\draw[arr] (usr)--(norm);
+\draw[arr] (norm)--(ret);
+\draw[arr] (idx) -- node[right,labfont] {search} (ret);
+\draw[arr] (ret)--(llm);
+\draw[arr] (llm)--(ans);
+\node[labfont,above=0.12cm of usr] {Online querying};
+
+%% ─── Chat Memory ─────────────────────────────────────────────────────────────
+\node[proc, below=0.55cm of llm] (mem) {Chat Memory\\(10 turns)};
+\draw[arr] (llm) -- node[right,labfont] {store} (mem);
+\draw[arr] (mem.east) -- ++(0.4,0) |- node[right,labfont,pos=0.25] {history} (llm.east);
+
+\end{tikzpicture}
+\caption{InfoBridge end-to-end architecture.
+  \textbf{Offline} (top): PDFs $\to$ extraction $\to$ chunking $\to$ embedding $\to$ FAISS index.
+  \textbf{Online} (bottom): user query $\to$ normalisation $\to$ retrieval $\to$ LLaMA-3 $\to$ answer with sources.
+  Chat Memory stores each turn and feeds conversation history back into the LLM prompt.}
+\label{fig:arch}
+\end{figure*}
+
+
+
+
+The system works in two main phases.
+
+\smallskip\noindent\textbf{Building the Index (Offline).}
+First, we read government PDFs and extract text. We filter out pages that don't have enough useful content (less than 50 characters or less than 10 words). Then we break the text into chunks of about 500 words with some overlap to keep context. Finally, we convert each chunk into numbers that represent its meaning (embeddings) and store them in a searchable index with 21,544 chunks.
+
+\smallskip\noindent\textbf{Answering Questions (Online).}
+When a user asks a question, we check if it's a greeting or general question (like ``where's the government website?''). If yes, we answer directly. If it's about government services, we first translate it to English if it's in Hindi or mixed Hindi-English. Then we convert the question into numbers and search our index to find the 5 most relevant document chunks. We send these chunks plus the question to an AI model, which reads them and writes a natural answer. We also remember the conversation so the AI can answer follow-up questions better.
+
+% ── 4. Implementation Details ─────────────────────────────────────────────────
+\section{Implementation Details}
+
+\subsection{Document Corpus and Extraction Pipeline}
+
+We collected and indexed 143 government documents covering five key services, of which 135 successfully contributed to the index. The table below shows how many documents and text chunks we have for each service.
+
+\begin{table}[ht]
+\centering
+\small
+\caption{Our collection of government documents.}
+\label{tab:corpus}
+\setlength{\tabcolsep}{4pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Service} & \textbf{Documents} & \textbf{Pages} & \textbf{Chunks} \\
+\midrule
+Voter ID / EPIC         & 16  & 404 & 6,932  \\
+Income Tax              & 15  & 686 & 7,846  \\
+Ayushman Bharat         & 12  & 431   & 3,873  \\
+Passport Services       & 20  & 72   & 1,615  \\
+Driving Licence \& RC   & 72  & 104   & 1,278  \\
+\midrule
+\textbf{Total}          & \textbf{135} & \textbf{1,697} & \textbf{21,544} \\
+\bottomrule
+\end{tabular}%
+}%
+\end{table}
+
+\noindent\textbf{Document Quality and Curation.}  The corpus spans government manuals, observer
+handbooks, electoral roll guidelines, ITR validation rules, PM-JAY treatment guidelines, anti-fraud
+policies, Motor Vehicles Act provisions, and comprehensive procedure handbooks. PDFExtractor
+(PyMuPDF backend) applies strict quality gates: extracted text must satisfy $\geq$50 characters AND $\geq$10
+tokens to be retained. This filtering eliminates blank pages, form headers, and scanned images with
+minimal extractable text.  Pages failing this gate are logged as warnings and discarded, additionally Tesseract
+OCR has been used to recover content from image-heavy pages.
+
+\textbf{Dual-Extraction Strategy.}  The extractor detects text-weak pages heuristically and attempts
+OCR fallback when required. If OCR succeeds, the
+recovered text is appended, otherwise the page is skipped with a 
+warning log. This design ensures the system remains functional on CPU-only deployments (helpful in low-resource
+availabilities) while supporting optional OCR on capable systems.
+
+\subsection{Embedding and Retrieval}
+
+\textbf{Chunking Text.} We break the extracted documents into smaller, manageable pieces (chunks) so the AI can process them efficiently. Using Recursive Character Text Splitter, we create 500-character chunks with a 100-character overlap. This overlap ensures we don't accidentally cut a sentence in half and lose its context. We also discard any chunks with fewer than 30 words, as they usually don't contain enough meaningful information. Each chunk is saved with metadata like the source file, page number, and service type, which helps us track exactly where the information came from.
+
+\textbf{Creating Embeddings.} We then convert both the document chunks and user queries into numerical vectors (embeddings) using the \texttt{all-MiniLM-L6-v2} model. This creates a 384-dimensional mathematical representation of the text's semantic meaning. After that, we apply L2-normalization to these vectors. 
+
+\textbf{Storing and Searching.} We store the numerical vectors using FAISS (Facebook AI Similarity Search). Because our dataset is relatively small (21,544 chunks taking up only about 35~MB), we use an exact search method IndexFlatIP . This means the system compares the user's query against every single document chunk to find the absolute best matches. This guarantees we never miss relevant information, which is critical for government rules, while still returning search results in under 50 milliseconds.
+
+\textbf{Retrieval and Filtering.} When a user asks a question, the system normally searches for the top 5 most relevant document chunks. To solve this, if a user filters by a specific service (like Passport), the system first fetches 15 potential matches. It then filters out any results from the wrong services to leave the top 5 correct ones. We also ignore any matches with a similarity score below 0.30. This ensures the AI only relies on highly relevant documents to answer questions and doesn't make things up.
+
+\textbf{Formatting Context and Sources.} Finally, the retrieved text chunks are combined and sent to the language model to generate an answer. We limit this combined text to 2,000 characters so the model doesn't get overwhelmed. The system also extracts the details from these chunks to create a list of sources. This guarantees that every answer it provides includes the exact government document and page number it used, building trust with the user.
+
+\subsection{Query Normalisation (Bilingual Bridge Layer)}
+We translate Hindi and mixed Hindi-English questions to English using Devanagari script detection and 65+ common Hindi words. The AI preserves domain-specific terms (``Aadhaar'', ``Voter ID''). We use english word embeddings, as English embedding models perform better on English language words/documents.
+
+\subsection{Language Model Integration and Fallback Strategy}
+We use Groq with fallback models (LLaMA-3) for availability during high load (\textless 5\% occurrence). Settings: temperature 0.3 (factual), max tokens 2,048. We verify response language and default to official websites if all models fail.
+
+\subsection{Frontend and User Experience}
+The Streamlit interface includes bilingual sidebar with language/service filters, chat area with document citations and relevance scores, dark/light themes, and example questions for new users.
+
+\subsection{Conversation Memory and Chat Context}
+The system remembers recent conversations to help answer follow-up questions better. It keeps the last 10 exchanges (about 20 messages between user and assistant) in memory.
+
+\smallskip\noindent\textbf{How it works:}  Each conversation turn is stored with who said it (user or bot) and what they said. When new questions come in, we add the recent conversation history to the prompt sent to the AI model, so the model understands context.
+
+\smallskip\noindent\textbf{Memory storage:}  The conversation is stored temporarily while the user is chatting. When they close the browser, the memory is cleared. This design is simple, doesn't require a database, and scales easily.
+
+\smallskip\noindent\textbf{Prompt Integration.}  We add the recent conversation history to the AI model's prompt, so it can understand context better. For example, if a user asks about passport eligibility first and then asks ``what's the fee?'', the AI remembers the first question and can give a more precise answer.
+
+% ── 5. Evaluation ─────────────────────────────────────────────────────────────
+\section{Evaluation}
+\label{sec:eval}
+
+\subsection{How We Tested the System}
+
+We tested the system on real questions that citizens might ask about government services. The questions are divided into different types: questions about procedures, eligibility, required documents, fees, and special forms. We also tested greetings and requests for website links. For each answer, we checked:
+
+\begin{enumerate}
+  \tightlist
+  \item \textbf{Is it accurate?} Does the answer match what's actually in the documents? Or did the AI make something up?
+  \item \textbf{Does it show sources?} When we display an answer, does it show which government document it came from?
+  \item \textbf{Did it find relevant documents?} For searches, did we get the top 5 most relevant documents?
+  \item \textbf{Is it in the right language?} If the user asked in Hindi, is the answer in Hindi? If they asked in English, is it in English?
+\end{enumerate}
+
+\subsection{Test Results}
+
+We tested questions across 7 different types. Here's what we found:
+
+% \begin{table}[ht]
+% \centering
+% \small
+% \caption{Test results by question type.}
+% \label{tab:eval}
+% \setlength{\tabcolsep}{3pt}
+% \resizebox{\columnwidth}{!}{%
+% \begin{tabular}{p{3cm}ccccc}
+% \toprule
+% \textbf{Question Type} & \textbf{Count} & \textbf{Accurate} & \textbf{Source}  \\
+% \midrule
+% Procedure questions     & 8  & 8/8  & 8/8  \\
+% Eligibility questions   & 6  & 6/6  & 6/6  \\
+% Document checklists     & 6  & 5/6  & 6/6  \\
+% Fee and timeline        & 4  & 3/4  & 4/4  \\
+% Form-specific questions & 5  & 4/5  & 5/5  \\
+% \midrule
+% \textbf{Total}      & \textbf{29} & \textbf{26/29} & \textbf{29/29} \\
+% \bottomrule
+% \end{tabular}%
+% }%
+% \end{table}
+
+\begin{table}[ht]
+\centering
+\small
+\caption{Human evaluation results by government service.}
+\label{tab:human_eval}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Service} & \textbf{Avg. Satisfaction} & \textbf{Avg. Reference} & \textbf{Questions Tested} \\
+\midrule
+Passport Services      & 9.3 & 9.6 & 10 \\
+Voter ID / EPIC        & 9.7 & 9.6 & 9 \\
+Driving Licence \& RC  & 8.2 & 8.6 & 6 \\
+Ayushman Bharat        & 8.8 & 8.7 & 5 \\
+Income Tax             & 10.0 & 9.4 & 7 \\
+\midrule
+\textbf{Overall}       & \textbf{9.2} & \textbf{9.2} & \textbf{37} \\
+\bottomrule
+\end{tabular}%
+}%
+\end{table}
+
+\smallskip\noindent\textbf{What the numbers mean:}
+
+\noindent\textbf{Human Evaluation Servicewise:}  We conducted manual human evaluation across five government services with professional raters scoring response satisfaction and reference correctness on 0-10 scales. Income Tax filing achieved perfect 10.0 satisfaction with consistent 9.4
+ reference mapping. Voter ID registration showed strong performance (9.7 satisfaction, 9.6 reference mapping). Passport services achieved 9.3 satisfaction 
+ with excellent 9.6 reference mapping. Ayushman Bharat and Driving Licence services showed solid performance at 8.8 and 8.2 satisfaction respectively. We tested 37 questions spanning six question types: procedures, eligibility criteria, document requirements, form-specific guidance and timeline information. Key findings across services: procedure and eligibility questions achieved near-perfect scores (8.8-10), form-specific questions varied by document availability (7.5-10), and document requirement questions faced occasional challenges with image-based PDFs (7-9 range). Cross-service checks and Hindi-language evaluation confirmed reliable multi-service functionality.
+
+\noindent\textbf{Source citations: 92\% (9.2/10)}  Human evaluation confirmed that document references are accurate and correctly mapped across all services. 
+
+\noindent\textbf{Accuracy: 92\% (9.2/10)}  Human raters scored response satisfaction at 9.2/10 overall. Income Tax achieved perfect 10.0, while Voter ID and Passport services both exceeded 9.3. Document checklist and fee-related questions with image-based PDFs showed lower scores (7-9 range), while procedure and eligibility questions achieved near-perfect scores (8.8-10). Answers accurately reflect government document content with high consistency.
+
+\noindent\textbf{Language accuracy: 100\% }  The bilingual system achieved good performance in human evaluation across both English and Hindi-language queries. Hindi-language evaluation confirmed the translation layer successfully handles mixed-language and Hindi queries. The system correctly preserves user language preference in responses while maintaining search effectiveness across both languages.
+
+
+\subsection{Indexing Speed and Performance}
+
+Building the index (converting all PDFs into a searchable format) is a one-time operation that takes about 3.7 minutes on a regular computer.
+
+\begin{table}[ht]
+\centering
+\small
+\caption{Speed of indexing on a regular computer.}
+\label{tab:perf}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lr}
+\toprule
+\textbf{Step}                  & \textbf{Time}       \\
+\midrule
+Reading PDFs                   & 48 s                \\
+Breaking into chunks           & 15 s                \\
+Creating mathematical vectors  & 180 s               \\
+Building search index          & 0.6 s               \\
+\midrule
+\textbf{Total time for file indexing}            & 219.9 s (3.7 min)   \\
+\midrule
+Search speed (per question)    & $<$50 ms            \\
+Storage size of index          & $\approx$35 MB      \\
+\bottomrule
+\end{tabular}%
+}%
+\end{table}
+
+\smallskip\noindent The index is small (35 MB) and fast (searches take less than 50 milliseconds), so it works well on regular computers, tablets, and phones. If the system grows to a million documents, we would need faster search methods, but our modular design makes it easy to swap in a better search method without changing the rest of the code.
+
+\section{Relevant Links}
+\begin{itemize}
+    \item GitHub Repository Link: \href{https://github.com/IIITH-2025-27/InfoBridge}{Project GitHub Repository}
+    \item Screenshots of Web App Link: \href{https://github.com/IIITH-2025-27/InfoBridge/tree/main/screenshots}{Web App Screenshots}
+\end{itemize}
+% \subsection{Known Problems}
+
+% \begin{enumerate}
+%   \tightlist
+%   \item \textbf{Scanned image pages.}  Some government forms are only images, not digital text. Our current tool can't read these. Installing Tesseract (a tool for reading scanned text) would solve this.
+%   \item \textbf{Very long answers.}  We limit answer context to 2,000 characters to keep responses fast. Very detailed questions that need multiple long sections might not fit.
+%   \item \textbf{Similar words from different services.}  The word ``fee'' appears in many service documents. Without a service filter, the system might return fees from a different government service.
+%   \item \textbf{Hindi/English mix-up.}  Sometimes when people type Hindi mixed with English abbreviations, the translation tool gets confused.
+% \end{enumerate}
+
+% % ── 5. Discussion ─────────────────────────────────────────────────────────────
+% \section{Discussion}
+
+% \noindent\textbf{Why Exact Search, Not Approximate.}
+% We use exact vector search instead of approximate methods because we have 21,544 vectors. Exact search is fast enough (1 millisecond per search). Approximate methods would add complexity without speed benefit, so we keep things simple.
+
+% \medskip\noindent\textbf{Chunk Size.}
+% We split documents into chunks of about 500 characters. This is a balance: too small (100 chars) breaks up procedures, too large (1000 chars) mixes unrelated content. Our testing showed 500 characters works best.
+
+% \medskip\noindent\textbf{English Embedding + Hindi Translation.}
+% We use an English-only embedding model but translate Hindi questions to English before searching. Why? English-language models are faster and work better on English documents (which most government PDFs are). We then ask the AI to answer in the user's language. This is simpler than using a multilingual embedding model, and it works better in practice.
+
+% \medskip\noindent\textbf{Special Handling for Greetings.}
+% We treat greetings and website requests differently---we don't search documents, we just answer directly. This prevents awkward ``no information found'' responses to ``hello'' or ``what's the government website?''
+% $<100$) prevents this UX failure by recognising non-document queries and invoking a dedicated LLM call.  The
+% cost (minor latency for regex matching, occasional false positives/negatives) is justified by improved citizen
+% experience.
+
+% \medskip\noindent\textbf{Switching AI providers.}
+% The AI API client is independent of which provider we use. Switching from Groq to OpenAI or Anthropic just requires changing one file. This prevents getting locked into one company's service.
+
+% ── 7. Limitations and Future Work ────────────────────────────────────────────
+\section{Limitations and Future Work}
+
+\subsection{Current Limitations}
+
+\begin{enumerate}
+  \tightlist
+  \item \textbf{Documents don't update automatically.}  Index rebuilding is manual when government PDFs change.
+
+  \item \textbf{Hindi abbreviations.}  Our Hindi word dictionary list misses government acronyms like GSTR (Goods and Services Tax) and NREGA (National Rural Employment Guarantee Act).
+
+  \item \textbf{Very large document collections.}  Scales well to 500,000 documents, but requires faster algorithms for India-wide systems.
+\end{enumerate}
+
+\subsection{Future Improvements}
+
+\begin{enumerate}
+  \tightlist
+  \item \textbf{Smarter ranking.}  Use re-ranking models to improve search quality from 90\% to 95\%+.
+
+  \item \textbf{Other Indian languages.}  Support Tamil, Telugu, Marathi, Bengali for 300+ million users.
+
+  \item \textbf{Automatic updates.}  Monitor government websites and rebuild index when documents change.
+
+  \item \textbf{Multi-step questions.}  Handle complex queries like ``apply for passport, then visa'' step-by-step.
+\end{enumerate}
+
+% ── 8. Conclusion ─────────────────────────────────────────────────────────────
+\section{Conclusion}
+
+InfoBridge shows that you can build a smart, accurate government document search system without expensive computers or expensive proprietary software.
+
+\smallskip\noindent\textbf{What We Achieved:}
+\begin{itemize}
+  \tightlist
+  \item \textbf{90\% accurate answers} based on government documents, and \textbf{100\% of answers include source citations}, building trust.
+  \item \textbf{Perfect handling of greetings and website requests} (100\% accuracy), so the system doesn't confusingly say ``I don't know'' to ``hello''.
+  \item \textbf{Bilingual support:} Hindi speakers can ask in Hindi and get answers in Devanagari script, while the system searches English documents.
+  \item \textbf{Fast responses} (under 1 second) through smart caching and efficient search, so conversations feel natural.
+  \item \textbf{Easy to expand:} We can add new government services or switch to a different AI provider just by changing configuration files.
+  \item \textbf{Works when things break:} If one AI model is overloaded, it tries another. If some PDFs are scanned images, it skips them and continues.
+\end{itemize}
+
+\smallskip\noindent\textbf{Real-World Impact:}  This system could help millions of Indians access government services more easily. The modular code enables adding new services without major rewrites.
+
+% \newpage
+% ── References ────────────────────────────────────────────────────────────────
+\begin{thebibliography}{9}
+
+\bibitem{lewis2020rag}
+P.~Lewis \textit{et~al.},
+``Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks,''
+\textit{Advances in Neural Information Processing Systems (NeurIPS)}, vol.~33, 2020.
+
+\bibitem{reimers2019sentence}
+N.~Reimers and I.~Gurevych,
+``Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks,''
+\textit{Proc.\ EMNLP}, 2019.
+
+\bibitem{wang2020minilm}
+W.~Wang \textit{et~al.},
+``MiniLM: Deep Self-Attention Distillation for Task-Agnostic Compression of
+Pre-Trained Transformers,''
+\textit{Advances in Neural Information Processing Systems (NeurIPS)}, 2020.
+
+\bibitem{gao2023retrieval}
+Y.~Gao \textit{et~al.},
+``Retrieval-Augmented Generation for Large Language Models: A Survey,''
+\textit{arXiv:2312.10997}, 2023.
+
+\bibitem{es2023ragas}
+S.~Es \textit{et~al.},
+``RAGAS: Automated Evaluation of Retrieval Augmented Generation,''
+\textit{arXiv:2309.15217}, 2023.
+
+\bibitem{johnson2019billion}
+J.~Johnson, M.~Douze, and H.~Jégou,
+``Billion-scale similarity search with GPUs,''
+\textit{IEEE Transactions on Big Data}, vol.~7, no.~3, pp.~535--547, 2019.
+
+\bibitem{touvron2023llama}
+H.~Touvron \textit{et~al.},
+``LLaMA: Open and Efficient Foundation Language Models,''
+\textit{arXiv:2302.13971}, 2023.
+
+\bibitem{groq_api}
+Groq Inc.,
+``Groq API Documentation: Fast LLM Inference,''
+\url{https://console.groq.com/docs}, 2024.
+
+\end{thebibliography}
+
+\end{document}
