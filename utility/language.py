@@ -1,7 +1,7 @@
 import logging
 import re
 from functools import lru_cache
-from src.llm.client import llmClient
+from src.llm.client import is_llm_error, llmClient
 
 logger = logging.getLogger(__name__)
 
@@ -128,21 +128,11 @@ def _script_counts(text: str) -> tuple[int, int]:
     return latin_chars, devanagari_chars
 
 
-def _has_devanagari(text: str) -> bool:
+def has_devanagari(text: str) -> bool:
     return bool(re.search(r"[\u0900-\u097F]", text or ""))
 
 
-def _is_llm_error_text(text: str) -> bool:
-    lower = (text or "").lower()
-    return (
-        lower.startswith("error:")
-        or "quota exceeded" in lower
-        or "model not found" in lower
-        or "failed to generate response" in lower
-    )
-
-
-def _looks_hinglish_heuristic(query: str) -> bool:
+def looks_hinglish(query: str) -> bool:
     tokens = re.findall(r"[a-zA-Z']+", query.lower())
     if not tokens:
         return False
@@ -168,15 +158,17 @@ def _looks_hinglish_heuristic(query: str) -> bool:
 
 def normalize_query_llm(query: str) -> str:
     # Always normalize to English for retrieval regardless of selected output language.
-    # all-MiniLM-L6-v2 is an English embedding model; Hindi/Hinglish queries embed
-    # poorly and produce low similarity scores against the indexed documents.
+    # The documents are English, and BM25 + the English reranker need English words
+    # (the multilingual embedder alone would cope, but the other two would not).
     # Output language is enforced separately by the LLM system instruction.
+    # Used directly when ENABLE_QUERY_REWRITE is off; otherwise QueryProcessor
+    # does translation + rewriting in a single call.
     query = (query or "").strip()
 
     if not query:
         return query
 
-    if not _has_devanagari(query) and not _looks_hinglish_heuristic(query):
+    if not has_devanagari(query) and not looks_hinglish(query):
         return query  # Already looks like English — skip normalization.
 
     prompt = f"""Translate the following query into English.
@@ -198,7 +190,7 @@ Output rules:
             system_instruction=normalizer_instruction,
         ).strip().strip('"').strip("'")
 
-        if not normalized or _is_llm_error_text(normalized):
+        if is_llm_error(normalized):
             return query
 
         latin_count, devanagari_count = _script_counts(normalized)

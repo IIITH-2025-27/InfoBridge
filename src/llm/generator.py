@@ -5,15 +5,23 @@ Orchestrates the full RAG pipeline: retrieve → format → generate → respond
 
 import logging
 import re
+import time
 from typing import Optional
 
 from src.retrieval.retriever import Retriever
-from src.llm.client import llmClient
+from src.retrieval.query_processor import QueryProcessor
+from src.llm.citations import apply_citations, strip_markers
+from src.llm.client import is_llm_error, llmClient
 from src.llm.general_responses import get_general_query_response
 from src.llm.prompts import build_prompt, get_output_language_guard, get_system_instruction
 from src.memory.chat_memory import ChatMemory
-from config.settings import TOP_K, MIN_ANSWER_SCORE
-from utility.language import normalize_query_llm_cached
+from src.guardrails import detect_prompt_injection, injection_refusal, pii_notice, redact_pii
+from config.settings import (
+    TOP_K,
+    ENABLE_INLINE_CITATIONS,
+    ENABLE_PII_REDACTION,
+    ENABLE_INJECTION_GUARD,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,15 +46,13 @@ class ResponseGenerator:
         self.retriever = retriever
         self.llm = llm_client or llmClient()
         self.memory = memory or ChatMemory()
+        self.query_processor = QueryProcessor(llm=self.llm)
 
     @staticmethod
     def _llm_unavailable(answer: str) -> bool:
-        lower = answer.lower()
-        return (
-            "quota is exhausted" in lower
-            or "model configuration issue" in lower
-            or "encountered an error while generating" in lower
-        )
+        # Was a check for "quota is exhausted", which the client never returned,
+        # so the document-snippet fallback below never ran.
+        return is_llm_error(answer)
 
     @staticmethod
     def _build_retrieval_fallback(results: list[dict], language: str) -> str:
@@ -136,7 +142,7 @@ class ResponseGenerator:
 
             prompt = (
                 "Rewrite the following answer in clear, natural English only. "
-                "Keep meaning and structure. Keep source labels/sources unchanged if present.\n\n"
+                "Keep meaning and structure. Keep citation markers like [1] or [2][3] exactly where they are.\n\n"
                 f"{answer}"
             )
             instruction = (
@@ -152,7 +158,7 @@ class ResponseGenerator:
 
             prompt = (
                 "Rewrite the following answer in Hindi (Devanagari script) only. "
-                "Keep meaning and structure. Keep source labels/sources unchanged if present.\n\n"
+                "Keep meaning and structure. Keep citation markers like [1] or [2][3] exactly where they are.\n\n"
                 f"{answer}"
             )
             instruction = (
@@ -163,6 +169,26 @@ class ResponseGenerator:
             return rewritten if rewritten and not self._llm_unavailable(rewritten) else answer
 
         return answer
+
+    def _simple_response(self, user_text: str, answer: str, language: str, query: str) -> dict:
+        """Response that skipped retrieval (greeting, refusal, ...)."""
+        self.memory.add_turn(role="user", content=user_text)
+        self.memory.add_turn(role="assistant", content=answer)
+        return {
+            "answer": answer,
+            "sources": [],
+            "show_sources": False,
+            "language": language,
+            "query": query,
+            "retrieval_query": query,
+            "routed_service": None,
+            "num_chunks_retrieved": 0,
+            "contexts": [],
+            "answerable": False,
+            "unsupported_sentences": [],
+            "pii_redacted": [],
+            "timings": {},
+        }
 
     def generate(
         self,
@@ -175,22 +201,27 @@ class ResponseGenerator:
         Generate a complete response for a user query.
 
         Pipeline:
-        1. Retrieve relevant chunks
-        2. Format context with citations
-        3. Build prompt with conversation history
-        4. Call llm API
-        5. Return structured response
+        1. Guardrails (prompt-injection refusal, PII redaction)
+        2. Query understanding (follow-up rewrite, translation, service routing)
+        3. Retrieve relevant chunks (hybrid + rerank) and decide if answerable
+        4. Build prompt with numbered sources and conversation history
+        5. Call LLM, enforce output language
+        6. Turn [n] markers into page-level citations
+        7. Return structured response
 
         Args:
             query: User's question.
             language: Language code ('en' or 'hi').
-            service_filter: Optional service category filter.
+            service_filter: Optional service category filter (from the sidebar).
             top_k: Number of chunks to retrieve.
 
         Returns:
-            Dict with keys: answer, sources, language, query.
+            Dict with keys: answer, sources, language, query, retrieval_query,
+            contexts (texts shown to the LLM), answerable, timings, ...
         """
-        # Step 1: Retrieve relevant chunks
+        timings: dict[str, float] = {}
+        started = time.perf_counter()
+
         original_query = query
 
         selected_language = (language or "en").strip().lower()
@@ -198,47 +229,62 @@ class ResponseGenerator:
 
         general_response = get_general_query_response(original_query, response_language)
         if general_response:
-            self.memory.add_turn(role="user", content=original_query)
-            self.memory.add_turn(role="assistant", content=general_response)
-            return {
-                "answer": general_response,
-                "sources": [],
-                "show_sources": False,
-                "language": response_language,
-                "query": original_query.strip().lower(),
-                "num_chunks_retrieved": 0,
-            }
+            return self._simple_response(
+                original_query, general_response, response_language, original_query.strip().lower()
+            )
 
-        query = query.strip().lower()
-        query = normalize_query_llm_cached(query)
-        logger.debug(f"Normalized Query: {query}")
-        
+        # Step 1: Guardrails
+        if ENABLE_INJECTION_GUARD and detect_prompt_injection(original_query):
+            logger.warning("Prompt-injection attempt refused")
+            return self._simple_response(
+                original_query, injection_refusal(response_language), response_language, original_query
+            )
+
+        pii_found: list[str] = []
+        if ENABLE_PII_REDACTION:
+            redaction = redact_pii(original_query)
+            if redaction.redacted:
+                pii_found = redaction.found
+                original_query = redaction.text
+                logger.info(f"Redacted PII from query: {pii_found}")
+
+        # Step 2: Query understanding
+        t0 = time.perf_counter()
+        plan = self.query_processor.process(original_query, self.memory.get_history())
+        query = plan.retrieval_query
+        timings["query_processing_ms"] = (time.perf_counter() - t0) * 1000
+
         logger.info(f"Original Query: {original_query}")
         logger.info(f"Processed Query: {query}")
-        
+
+        # Step 3: Retrieve
+        t0 = time.perf_counter()
         results = self.retriever.retrieve(
             query=query,
             top_k=top_k,
             service_filter=service_filter,
+            preferred_service=None if service_filter else plan.service,
         )
+        timings["retrieval_ms"] = (time.perf_counter() - t0) * 1000
 
-        # If retrieval returns only weak matches (top score below MIN_ANSWER_SCORE),
-        # treat as no results so the model will explicitly say information is unavailable.
-        if results:
-            top_score = max(r.get("score", 0.0) for r in results)
-            if top_score < MIN_ANSWER_SCORE:
-                results = []
+        # If retrieval returns only weak matches, treat as no results so the
+        # model will explicitly say information is unavailable.
+        answerable = self.retriever.is_answerable(results)
+        if not answerable:
+            results = []
 
-        # Step 2: Format context
-        context = self.retriever.format_context(results)
-        citations = self.retriever.get_source_citations(results)
+        # Step 4: Format context (whole chunks only, within the size budget)
+        context_results = self.retriever.select_for_context(results)
+        context = self.retriever.format_context(context_results)
 
-        # Step 3: Get conversation history
         chat_history = self.memory.format_history()
 
-        # Step 4: Build prompt
+        question_for_llm = original_query
+        if plan.rewritten:
+            question_for_llm = f"{original_query}\n(Interpreted as: {query})"
+
         prompt = build_prompt(
-            query=query,
+            query=question_for_llm,
             context=context,
             chat_history=chat_history,
             language=response_language,
@@ -249,6 +295,7 @@ class ResponseGenerator:
         system_instruction = get_system_instruction(response_language)
 
         # Step 5: Generate response
+        t0 = time.perf_counter()
         answer = self.llm.generate(
             prompt=prompt,
             system_instruction=system_instruction,
@@ -256,7 +303,7 @@ class ResponseGenerator:
 
         # If Hindi is requested but answer is not in Devanagari, retry with a stronger hint.
         if response_language == "hi" and not self._llm_unavailable(answer):
-            devanagari_chars = sum(1 for ch in answer if "\u0900" <= ch <= "\u097F")
+            devanagari_chars = sum(1 for ch in answer if "ऀ" <= ch <= "ॿ")
             total_letters = sum(1 for ch in answer if ch.isalpha())
             devanagari_ratio = devanagari_chars / max(total_letters, 1)
             if devanagari_ratio < 0.25:
@@ -282,28 +329,55 @@ class ResponseGenerator:
             )
 
         answer = self._enforce_answer_language(answer=answer, language=response_language)
+        timings["llm_ms"] = (time.perf_counter() - t0) * 1000
 
+        # Step 6: Citations
         used_retrieval_fallback = False
+        unsupported_sentences: list[str] = []
         if self._llm_unavailable(answer):
             used_retrieval_fallback = True
-            answer = self._build_retrieval_fallback(results=results, language=response_language)
+            answer = self._build_retrieval_fallback(results=context_results, language=response_language)
+            citations = []
+        elif ENABLE_INLINE_CITATIONS:
+            cited = apply_citations(answer, context_results, response_language)
+            answer = cited.answer
+            citations = cited.sources
+            unsupported_sentences = cited.unsupported_sentences
+        else:
+            answer = strip_markers(answer)
+            citations = self.retriever.get_source_citations(context_results)
 
-        # Step 6: Update conversation memory
+        if pii_found:
+            answer = f"{pii_notice(pii_found, response_language)}\n\n{answer}"
+
+        # Step 7: Update conversation memory (markers removed: numbering is per answer)
         self.memory.add_turn(role="user", content=original_query)
-        self.memory.add_turn(role="assistant", content=answer)
+        self.memory.add_turn(role="assistant", content=strip_markers(answer))
+
+        timings["total_ms"] = (time.perf_counter() - started) * 1000
 
         response = {
             "answer": answer,
             "sources": citations,
             "show_sources": bool(citations) and not used_retrieval_fallback,
             "language": response_language,
-            "query": query,
-            "num_chunks_retrieved": len(results),
+            "query": original_query,
+            "retrieval_query": query,
+            "routed_service": plan.service,
+            "num_chunks_retrieved": len(context_results),
+            "contexts": [r["text"] for r in context_results],
+            "retrieved": context_results,
+            "answerable": answerable,
+            "used_retrieval_fallback": used_retrieval_fallback,
+            "unsupported_sentences": unsupported_sentences,
+            "pii_redacted": pii_found,
+            "timings": timings,
         }
 
         logger.info(
             f"Generated response for query: '{query[:50]}...' "
-            f"({len(citations)} sources, lang={response_language})"
+            f"({len(citations)} sources, lang={response_language}, "
+            f"{timings['total_ms']:.0f} ms)"
         )
 
         return response

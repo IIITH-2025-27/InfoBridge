@@ -1,0 +1,143 @@
+{
+  "name": "full_v2",
+  "preset": "full",
+  "overrides": {},
+  "config": {
+    "LLM_PROVIDER": "gemini",
+    "MODEL": "gemini-3.6-flash",
+    "EMBEDDING_MODEL": "intfloat/multilingual-e5-small",
+    "VECTORSTORE_DIR": "/Users/ankitkumar/Downloads/InfoBridge/vectorstore_data",
+    "RETRIEVAL_MODE": "hybrid",
+    "USE_RERANKER": "True",
+    "RERANKER_MODEL": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "EXPAND_NEIGHBORS": "False",
+    "CANDIDATE_POOL": "30",
+    "MAX_CHUNKS_PER_SOURCE": "3",
+    "MAX_CONTEXT_CHARS": "6000",
+    "TOP_K": "5",
+    "MIN_ANSWER_SCORE": "0.8",
+    "MIN_RERANK_SCORE": "0.3",
+    "ENABLE_QUERY_REWRITE": "True",
+    "ENABLE_SERVICE_ROUTING": "True",
+    "ENABLE_INLINE_CITATIONS": "True",
+    "PREFER_RECENT_DOCS": "True",
+    "ENABLE_PII_REDACTION": "True",
+    "ENABLE_INJECTION_GUARD": "True"
+  },
+  "created_at": "2026-11-04 03:00:00",
+  "retrieval": {
+    "page_level": {
+      "hit@1": 0.52,
+      "hit@3": 0.73,
+      "hit@5": 0.775,
+      "hit@10": 0.79,
+      "mrr": 0.6245615079365079,
+      "ndcg@10": 0.6659313353523132,
+      "n": 200
+    },
+    "chunk_level": {
+      "hit@1": 0.455,
+      "hit@3": 0.665,
+      "hit@5": 0.68,
+      "hit@10": 0.69,
+      "mrr": 0.5548392857142858,
+      "ndcg@10": 0.5891244837032206,
+      "n": 200
+    },
+    "page_level_by_service": {
+      "driving": {
+        "hit@1": 0.75,
+        "hit@3": 0.875,
+        "hit@5": 0.875,
+        "hit@10": 0.875,
+        "mrr": 0.8041666666666668,
+        "ndcg@10": 0.8223197315178593,
+        "n": 40
+      },
+      "health": {
+        "hit@1": 0.525,
+        "hit@3": 0.625,
+        "hit@5": 0.625,
+        "hit@10": 0.65,
+        "mrr": 0.5694444444444444,
+        "ndcg@10": 0.5890722375701725,
+        "n": 40
+      },
+      "passport": {
+        "hit@1": 0.375,
+        "hit@3": 0.675,
+        "hit@5": 0.8,
+        "hit@10": 0.825,
+        "mrr": 0.5252380952380952,
+        "ndcg@10": 0.5991652846786819,
+        "n": 40
+      },
+      "tax": {
+        "hit@1": 0.5,
+        "hit@3": 0.8,
+        "hit@5": 0.85,
+        "hit@10": 0.875,
+        "mrr": 0.6572916666666667,
+        "ndcg@10": 0.7121528882161773,
+        "n": 40
+      },
+      "voter": {
+        "hit@1": 0.45,
+        "hit@3": 0.675,
+        "hit@5": 0.725,
+        "hit@10": 0.725,
+        "mrr": 0.5666666666666667,
+        "ndcg@10": 0.6069465347786748,
+        "n": 40
+      }
+    },
+    "false_refusal_rate_gate": 0.01,
+    "latency_ms_p50": 201.3424375327304,
+    "latency_ms_p95": 492.2945504891683
+  },
+  "hindi": {
+    "page_level": {
+      "hit@1": 0.5666666666666667,
+      "hit@3": 0.7666666666666667,
+      "hit@5": 0.8333333333333334,
+      "hit@10": 0.8666666666666667,
+      "mrr": 0.6808730158730157,
+      "ndcg@10": 0.7268503822166185,
+      "n": 30
+    },
+    "top5_overlap_with_english": 0.6948412698412699
+  },
+  "followup": {
+    "as_typed": {
+      "hit@1": 0.26666666666666666,
+      "hit@3": 0.4,
+      "hit@5": 0.43333333333333335,
+      "hit@10": 0.4666666666666667,
+      "mrr": 0.3472222222222222,
+      "ndcg@10": 0.37702009198224157,
+      "n": 30
+    },
+    "after_rewrite": {
+      "hit@1": 0.6333333333333333,
+      "hit@3": 0.7333333333333333,
+      "hit@5": 0.7666666666666667,
+      "hit@10": 0.7666666666666667,
+      "mrr": 0.6861111111111111,
+      "ndcg@10": 0.7064178688405437,
+      "n": 30
+    },
+    "standalone_upper_bound": {
+      "hit@1": 0.6666666666666666,
+      "hit@3": 0.8,
+      "hit@5": 0.8333333333333334,
+      "hit@10": 0.8333333333333334,
+      "mrr": 0.7305555555555555,
+      "ndcg@10": 0.7564178688405436,
+      "n": 30
+    }
+  },
+  "gate": {
+    "refusal_rate_gate": 0.74,
+    "n": 50
+  }
+}

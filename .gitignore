@@ -1,5 +1,6 @@
 # InfoBridge data
 vectorstore_data/
+vectorstore_baseline/
 *.pyc
 __pycache__/
 *.egg-info/
@@ -20,4 +21,10 @@ build/
 *.fls
 *.fdb_latexmk
 *.fbd_latexmkrc
-.env/
+
+# Secrets (keep .env.example tracked)
+.env
+.env.*
+!.env.example
+
+.DS_Store

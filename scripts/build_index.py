@@ -18,7 +18,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from config.settings import DATA_DIR, SERVICE_CATEGORIES, VECTORSTORE_DIR
+from config.settings import DATA_DIR, EMBEDDING_MODEL, SERVICE_CATEGORIES, VECTORSTORE_DIR
 from src.data_processing.pdf_extractor import PDFExtractor
 from src.data_processing.chunker import TextChunker
 from src.embeddings.embedder import Embedder
@@ -76,6 +76,12 @@ def build_index(data_dir: Path = DATA_DIR) -> None:
         sys.exit(1)
 
     print(f"\n📄 Total documents: {len(all_documents)}")
+    ocr_pages = sum(1 for d in all_documents if d.get("ocr"))
+    if ocr_pages:
+        print(f"   → {ocr_pages} pages read with OCR")
+    indexed_files = {d["source_file"] for d in all_documents}
+    print(f"   → {len(indexed_files)} PDFs with usable text "
+          f"(run scripts/check_unindexed.py afterwards to see any that are missing)")
 
     # ── Step 2: Chunk documents ───────────────────────────────────────────
     print("\n Chunking documents...")
@@ -88,7 +94,7 @@ def build_index(data_dir: Path = DATA_DIR) -> None:
         sys.exit(1)
 
     # ── Step 3: Generate embeddings ───────────────────────────────────────
-    print("\nGenerating embeddings (this may take a moment)...")
+    print(f"\nGenerating embeddings with {EMBEDDING_MODEL} (this may take a moment)...")
     embedder = Embedder()
     embeddings, valid_chunks = embedder.encode_chunks(all_chunks)
     print(f"   → Embeddings shape: {embeddings.shape}")

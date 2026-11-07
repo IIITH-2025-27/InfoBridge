@@ -41,6 +41,7 @@ def render_chat(service_categories: dict) -> None:
                     sources=message["sources"],
                     service_categories=service_categories,
                     language=st.session_state.language,
+                    unsupported_sentences=message.get("unsupported_sentences"),
                 )
 
     lang = st.session_state.language
@@ -89,7 +90,7 @@ def render_chat(service_categories: dict) -> None:
                 generator.memory = st.session_state.memory
         except Exception as exc:
             error_msg = (
-                f"⚠️ {t('LLM is not configured correctly. Please set GOOGLE_API_KEY in .env', lang)}\n\n"
+                f"⚠️ {t('LLM is not configured correctly. Please set GEMINI_API_KEY in .env', lang)}\n\n"
                 f"Error: {exc}"
             )
             st.error(error_msg)
@@ -114,6 +115,7 @@ def render_chat(service_categories: dict) -> None:
                 sources=response["sources"],
                 service_categories=service_categories,
                 language=lang,
+                unsupported_sentences=response.get("unsupported_sentences"),
             )
 
         st.session_state.messages.append({
@@ -121,6 +123,7 @@ def render_chat(service_categories: dict) -> None:
             "content": response["answer"],
             "sources": response["sources"],
             "show_sources": response.get("show_sources", True),
+            "unsupported_sentences": response.get("unsupported_sentences", []),
         })
         st.session_state.memory = generator.memory
         _scroll_to_chat_input()

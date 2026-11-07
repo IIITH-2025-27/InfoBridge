@@ -15,7 +15,7 @@ Ask about government services...,सरकारी सेवाओं के �
 Searching documents and generating response...,दस्तावेज़ खोज रहे हैं और उत्तर तैयार कर रहे हैं...
 System not ready. Please ensure the vector store is built.,सिस्टम तैयार नहीं है। कृपया vector store बनाएं।
 Run: python scripts/build_index.py,चलाएं: python scripts/build_index.py
-LLM is not configured correctly. Please set GOOGLE_API_KEY in .env,LLM सही कॉन्फ़िगर नहीं है। कृपया .env में GOOGLE_API_KEY सेट करें।
+LLM is not configured correctly. Please set GEMINI_API_KEY in .env,LLM सही कॉन्फ़िगर नहीं है। कृपया .env में GEMINI_API_KEY सेट करें।
 Try asking:,यह पूछकर देखें:
 Sources,स्रोत
 documents,दस्तावेज़
@@ -26,3 +26,5 @@ Income Tax,आयकर
 Ayushman Bharat,आयुष्मान भारत
 Relevance,प्रासंगिकता
 "Smart Access to Indian Government Services — Ask about Passport, Voter ID, Driving Licence, Income Tax, Ayushman Bharat","भारतीय सरकारी सेवाओं तक स्मार्ट पहुंच — पासपोर्ट, वोटर आईडी, ड्राइविंग लाइसेंस, आयकर और आयुष्मान भारत के बारे में पूछें"
+Page,पृष्ठ
+"Some statements could not be matched to the cited document. Please verify them on the official portal.","कुछ कथन उद्धृत दस्तावेज़ से मेल नहीं खा सके। कृपया आधिकारिक पोर्टल पर उनकी पुष्टि करें।"

@@ -7,6 +7,7 @@ import streamlit as st
 from src.embeddings.embedder import Embedder
 from src.retrieval.retriever import Retriever
 from src.vectorstore.store import VectorStore
+from config.settings import RETRIEVAL_MODE
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,11 @@ def load_pipeline() -> tuple[dict | None, str | None]:
 
         embedder = Embedder()
         retriever = Retriever(vector_store=vector_store, embedder=embedder)
+
+        # Build the BM25 index and load the reranker now, not on the first question.
+        if RETRIEVAL_MODE in ("bm25", "hybrid"):
+            _ = retriever.bm25
+        _ = retriever.reranker
 
         return {
             "retriever": retriever,

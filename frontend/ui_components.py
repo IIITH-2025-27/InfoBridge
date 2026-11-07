@@ -200,7 +200,7 @@ def render_sidebar(
         st.markdown(
             "<div style='text-align:center; padding-top:1rem;'>"
             "<div style='font-size:0.65rem; color:rgba(255,255,255,0.2); letter-spacing:0.5px;'>"
-            "RAG · FAISS · MiniLM · Groq"
+            "RAG · Hybrid search · Reranker · Gemini"
             "</div></div>",
             unsafe_allow_html=True,
         )
@@ -244,7 +244,7 @@ def render_header(language: str, theme: str = "dark") -> None:
                     <div style="margin-top:0.8rem;">
                         <span class="ib-pill ib-pill-saffron">🤖 AI Powered</span>
                         <span class="ib-pill ib-pill-green">📚 RAG Pipeline</span>
-                        <span class="ib-pill ib-pill-blue">⚡ Groq LLM</span>
+                        <span class="ib-pill ib-pill-blue">⚡ Gemini LLM</span>
                     </div>
                 </div>
                 <div style="{svc_panel_style}">{services_line}</div>
@@ -257,8 +257,19 @@ def render_header(language: str, theme: str = "dark") -> None:
 
 # ─── Sources ──────────────────────────────────────────────────────────────────
 
-def render_sources(sources: list[dict], service_categories: dict, language: str) -> None:
+def render_sources(
+    sources: list[dict],
+    service_categories: dict,
+    language: str,
+    unsupported_sentences: Optional[list[str]] = None,
+) -> None:
     """Render source citations as an expandable section."""
+    if unsupported_sentences:
+        st.caption(
+            "⚠️ "
+            + t("Some statements could not be matched to the cited document. Please verify them on the official portal.", language)
+        )
+
     if not sources:
         return
 
@@ -280,6 +291,9 @@ def render_sources(sources: list[dict], service_categories: dict, language: str)
             source_file = src.get("source_file", "Unknown")
             source_path = src.get("source_path", "")
             relevance_score = src.get("relevance_score")
+            number = src.get("number")
+            page = src.get("page")
+            assessment_year = src.get("assessment_year")
 
             relevance_text = (
                 f"{relevance_score:.0%}" if isinstance(relevance_score, (int, float)) else "N/A"
@@ -297,26 +311,36 @@ def render_sources(sources: list[dict], service_categories: dict, language: str)
                 if fallback_path.exists() and fallback_path.is_file():
                     resolved_path = fallback_path
 
-            title_html = f"{icon} {source_file}"
+            label_prefix = f"[{number}] " if number else ""
+            page_suffix = f"#page={page}" if page and str(page).isdigit() else ""
+            title_html = f"{label_prefix}{icon} {source_file}"
             if resolved_path is not None:
                 server_url = _ensure_pdf_server_url()
                 if server_url:
                     relative_path = f"{service_type}/{source_file}"
-                    file_url = f"{server_url}/{quote(relative_path, safe='/')}"
+                    # #page=N opens the PDF at the cited page in most browsers
+                    file_url = f"{server_url}/{quote(relative_path, safe='/')}{page_suffix}"
                     title_html = (
+                        f"{label_prefix}"
                         f'<a href="{file_url}" target="_blank" rel="noopener noreferrer" '
                         f'style="color:#FFD700; text-decoration:none;">'
                         f"{icon} {source_file}"
                         "</a>"
                     )
 
+            meta_parts = [t(name, language)]
+            if page and page != "?":
+                meta_parts.append(f'{t("Page", language)} {page}')
+            if assessment_year:
+                meta_parts.append(f"AY {assessment_year}")
+            meta_parts.append(f'{t("Relevance", language)}: {relevance_text}')
+
             with st.container():
                 st.markdown(
                     f'<div class="ib-source-card">'
                     f'<strong>{title_html}</strong><br>'
                     f'<span class="ib-source-meta">'
-                    f'{t(name, language)} &nbsp;·&nbsp; '
-                    f'{t("Relevance", language)}: {relevance_text}'
+                    f'{" &nbsp;·&nbsp; ".join(meta_parts)}'
                     f'</span></div>',
                     unsafe_allow_html=True,
                 )

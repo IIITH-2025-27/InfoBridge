@@ -35,6 +35,17 @@ except ImportError:
     logger.warning("⚠️ pytesseract/PIL not installed → OCR disabled")
 
 
+OCR_DPI = 200
+
+
+def _ocr_languages() -> str:
+    try:
+        installed = set(pytesseract.get_languages(config=""))
+    except Exception:
+        return "eng"
+    return "eng+hin" if "hin" in installed else "eng"
+
+
 class PDFExtractor:
     """Extracts structured text from PDFs with optional OCR fallback."""
 
@@ -57,14 +68,17 @@ class PDFExtractor:
             for page_num, page in enumerate(doc, start=1):
 
                 text = page.get_text()
+                used_ocr = False
 
                 # Step 1: Check if text is weak
                 if PDFExtractor._is_bad_text(text):
 
-                    # Step 2: OCR fallback (only if available)
+                    # Step 2: OCR fallback (only if available). Scanned pages are
+                    # images; a page with no text and no images is truly blank.
                     if TESSERACT_AVAILABLE and len(page.get_images()) > 0:
                         logger.warning(f"⚠️ OCR fallback on page {page_num}")
                         text = PDFExtractor._run_ocr(page)
+                        used_ocr = True
                     else:
                         logger.warning(
                             f"⚠️ Skipping OCR on page {page_num} (not available or no images)"
@@ -82,7 +96,8 @@ class PDFExtractor:
                     "page": page_num,
                     "source_file": pdf_path.name,
                     "source_path": str(pdf_path),
-                    "service_type": pdf_path.parent.name
+                    "service_type": pdf_path.parent.name,
+                    "ocr": used_ocr,
                 })
 
             logger.info(
@@ -143,10 +158,11 @@ class PDFExtractor:
 
         text = text.strip()
 
-        if len(text) < 50:
+        # Phase 2: was < 50 chars / < 10 words, which skipped short form pages.
+        if len(text) < 20:
             return True
 
-        if len(text.split()) < 10:
+        if len(text.split()) < 4:
             return True
 
         return False
@@ -155,9 +171,11 @@ class PDFExtractor:
     def _run_ocr(page) -> str:
         """Run OCR safely."""
         try:
-            pix = page.get_pixmap()
+            # Default pixmap is 72 DPI, too low for Tesseract; 200 DPI reads well.
+            pix = page.get_pixmap(dpi=OCR_DPI)
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-            return pytesseract.image_to_string(img)
+            # eng+hin when the Hindi language pack is installed, else English only
+            return pytesseract.image_to_string(img, lang=_ocr_languages())
         except Exception as e:
             logger.error(f"OCR failed: {e}")
             return ""

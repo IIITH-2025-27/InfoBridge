@@ -7,8 +7,14 @@ InfoBridge is a Retrieval-Augmented Generation (RAG) chatbot for Indian governme
 ## Features
 
 - RAG pipeline over five service areas: Passport, Voter ID / EPIC, Driving Licence & RC, Income Tax, and Ayushman Bharat.
-- Groq-powered LLM responses through `src/llm/client.py` with `MODEL` and `FALLBACK_MODELS` support.
-- Source citations for every answer.
+- Gemini-powered LLM responses through `src/llm/client.py` (REST API, no extra SDK), with `MODEL` and `FALLBACK_MODELS` support. Groq still works with `LLM_PROVIDER=groq`.
+- Hybrid retrieval: BM25 keywords and FAISS vectors, fused with Reciprocal Rank Fusion, then reranked by a cross-encoder.
+- Multilingual embeddings (`multilingual-e5-small`) for Hindi.
+- Sentence-level citations `[1]` that link to the exact PDF page, plus a check that each cited sentence is supported by its source.
+- Follow-up questions are rewritten into standalone questions before search, and each question is routed to the most likely service.
+- Newer documents are preferred (assessment-year metadata for tax documents).
+- Guardrails: Aadhaar, PAN, mobile and e-mail redaction, and prompt-injection refusal.
+- An automatic evaluation harness in `eval/` that needs no hand-labelled data (see `eval/README.md`).
 - Conversation memory for follow-up questions.
 - English/Hindi UI support through the CSV translation layer in `frontend/translations_en_hi.csv`.
 - Sidebar with a collapsible left strip, theme persistence, service filtering, and a localized service selector.
@@ -20,7 +26,9 @@ InfoBridge is a Retrieval-Augmented Generation (RAG) chatbot for Indian governme
 PDFs -> PDF extraction -> chunking -> embeddings -> FAISS index
                                          |
                                          v
-User query -> retrieval -> context + citations -> Groq LLM -> answer + sources
+User query -> guardrails -> query rewrite/translate/route
+           -> BM25 + FAISS -> RRF -> cross-encoder rerank -> max 3 chunks/PDF
+           -> numbered context -> Gemini LLM -> [n] citations + support check -> answer + sources
 ```
 
 ## Project Structure
@@ -45,13 +53,18 @@ InfoBridge/
 │   ├── embeddings/
 │   │   └── embedder.py
 │   ├── llm/
-│   │   ├── client.py          # Groq client
+│   │   ├── client.py          # Gemini / Groq client
+│   │   ├── citations.py       # [n] markers → page citations
 │   │   ├── prompts.py
 │   │   └── generator.py
 │   ├── memory/
 │   │   └── chat_memory.py
 │   ├── retrieval/
-│   │   └── retriever.py
+│   │   ├── retriever.py       # hybrid search, RRF, rerank, per-PDF cap
+│   │   ├── bm25.py
+│   │   ├── reranker.py
+│   │   └── query_processor.py # follow-up rewrite, translation, routing
+│   ├── guardrails.py
 │   └── vectorstore/
 │       └── store.py
 ├── scripts/
@@ -92,13 +105,16 @@ pip install -r requirements.txt
 
 ### 3. Set your API key
 
-Create a `.env` file in the project root and add:
+Copy `.env.example` to `.env` and paste your Gemini key (from https://aistudio.google.com/apikey):
 
 ```bash
-API_KEY=your_groq_api_key_here
-MODEL=llama3-8b-8192
-FALLBACK_MODELS=llama3-70b-8192,mixtral-8x7b-32768
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=your_gemini_api_key_here
+MODEL=gemini-3.6-flash
+FALLBACK_MODELS=gemini-3.8-flash,gemini-3.5-flash-lite
 ```
+
+`.env` is git-ignored. Never commit real keys.
 
 ### 4. Add PDFs
 
@@ -131,10 +147,12 @@ streamlit run app.py
 |-----------------|---------------------------------------|
 | Frontend        | Streamlit                             |
 | Backend         | Python                                |
-| Embeddings      | sentence-transformers/all-MiniLM-L6-v2|
+| Embeddings      | intfloat/multilingual-e5-small        |
+| Keyword search  | BM25 (scikit-learn + scipy)           |
+| Reranker        | cross-encoder/ms-marco-MiniLM-L-6-v2  |
 | Vector Store    | FAISS (faiss-cpu)                     |
-| LLM             | Groq chat completions               |
-| PDF Parsing     | PyPDF2                                |
+| LLM             | Google Gemini (REST)                  |
+| PDF Parsing     | PyMuPDF (+ optional Tesseract OCR)    |
 | Text Splitting  | LangChain Text Splitters              |
 
 ## UI Notes
@@ -148,11 +166,11 @@ streamlit run app.py
 
 ## Evaluation
 
-- Responses are grounded in retrieved context.
-- Every assistant answer includes source citations.
-- The system supports follow-up questions through conversation memory.
+The `eval/` folder generates its own test data from the PDFs and measures retrieval (Hit@k, MRR, nDCG), answer faithfulness, relevance and correctness (LLM judge), refusal of out-of-scope questions, Hindi and follow-up retrieval, and latency. Each phase has a preset, so the results form an ablation table. See [eval/README.md](eval/README.md).
 
 ## Troubleshooting
 
 - If the UI text looks stale, restart Streamlit and hard refresh the browser.
-- If the app cannot answer, rebuild the index and confirm `API_KEY` is set in `.env`.
+- If the app cannot answer, rebuild the index and confirm `GEMINI_API_KEY` is set in `.env`.
+- "The index was built with ... but EMBEDDING_MODEL is ...": rebuild with `python scripts/build_index.py`, or set `EMBEDDING_MODEL` back to the model that built the index.
+- 429 errors: the Gemini free tier limits requests per minute. Wait a minute, or add another model to `FALLBACK_MODELS`.

@@ -1,0 +1,117 @@
+{
+  "name": "baseline_retrieval",
+  "preset": "baseline",
+  "overrides": {
+    "VECTORSTORE_DIR": "vectorstore_baseline",
+    "EMBEDDING_MODEL": "sentence-transformers/all-MiniLM-L6-v2",
+    "MIN_ANSWER_SCORE": "0.45",
+    "RETRIEVAL_MODE": "dense",
+    "USE_RERANKER": "false",
+    "EXPAND_NEIGHBORS": "false",
+    "ENABLE_QUERY_REWRITE": "false",
+    "ENABLE_SERVICE_ROUTING": "false",
+    "ENABLE_INLINE_CITATIONS": "false",
+    "PREFER_RECENT_DOCS": "false",
+    "ENABLE_PII_REDACTION": "false",
+    "ENABLE_INJECTION_GUARD": "false",
+    "MAX_CHUNKS_PER_SOURCE": "1",
+    "MAX_CONTEXT_CHARS": "2000"
+  },
+  "config": {
+    "LLM_PROVIDER": "gemini",
+    "MODEL": "gemini-3.6-flash",
+    "EMBEDDING_MODEL": "sentence-transformers/all-MiniLM-L6-v2",
+    "VECTORSTORE_DIR": "/Users/ankitkumar/Downloads/InfoBridge/vectorstore_baseline",
+    "RETRIEVAL_MODE": "dense",
+    "USE_RERANKER": "False",
+    "RERANKER_MODEL": "cross-encoder/ms-marco-MiniLM-L-6-v2",
+    "EXPAND_NEIGHBORS": "False",
+    "CANDIDATE_POOL": "30",
+    "MAX_CHUNKS_PER_SOURCE": "1",
+    "MAX_CONTEXT_CHARS": "2000",
+    "TOP_K": "5",
+    "MIN_ANSWER_SCORE": "0.45",
+    "MIN_RERANK_SCORE": "0.1",
+    "ENABLE_QUERY_REWRITE": "False",
+    "ENABLE_SERVICE_ROUTING": "False",
+    "ENABLE_INLINE_CITATIONS": "False",
+    "PREFER_RECENT_DOCS": "False",
+    "ENABLE_PII_REDACTION": "False",
+    "ENABLE_INJECTION_GUARD": "False"
+  },
+  "created_at": "2026-11-04 02:21:58",
+  "retrieval": {
+    "page_level": {
+      "hit@1": 0.41,
+      "hit@3": 0.5,
+      "hit@5": 0.52,
+      "hit@10": 0.52,
+      "mrr": 0.45474999999999993,
+      "ndcg@10": 0.47125019762156106,
+      "n": 200
+    },
+    "chunk_level": {
+      "hit@1": 0.31,
+      "hit@3": 0.375,
+      "hit@5": 0.39,
+      "hit@10": 0.39,
+      "mrr": 0.34291666666666665,
+      "ndcg@10": 0.3548519872818165,
+      "n": 200
+    },
+    "page_level_by_service": {
+      "driving": {
+        "hit@1": 0.65,
+        "hit@3": 0.775,
+        "hit@5": 0.8,
+        "hit@10": 0.8,
+        "mrr": 0.7145833333333333,
+        "ndcg@10": 0.7363598893089807,
+        "n": 40
+      },
+      "health": {
+        "hit@1": 0.4,
+        "hit@3": 0.4,
+        "hit@5": 0.4,
+        "hit@10": 0.4,
+        "mrr": 0.4,
+        "ndcg@10": 0.4,
+        "n": 40
+      },
+      "passport": {
+        "hit@1": 0.375,
+        "hit@3": 0.55,
+        "hit@5": 0.55,
+        "hit@10": 0.55,
+        "mrr": 0.45,
+        "ndcg@10": 0.4755929753571458,
+        "n": 40
+      },
+      "tax": {
+        "hit@1": 0.275,
+        "hit@3": 0.375,
+        "hit@5": 0.4,
+        "hit@10": 0.4,
+        "mrr": 0.32166666666666666,
+        "ndcg@10": 0.34121780785943645,
+        "n": 40
+      },
+      "voter": {
+        "hit@1": 0.35,
+        "hit@3": 0.4,
+        "hit@5": 0.45,
+        "hit@10": 0.45,
+        "mrr": 0.3875,
+        "ndcg@10": 0.40308031558224255,
+        "n": 40
+      }
+    },
+    "false_refusal_rate_gate": 0.0,
+    "latency_ms_p50": 11.290916940197349,
+    "latency_ms_p95": 33.97336493944747
+  },
+  "gate": {
+    "refusal_rate_gate": 0.2,
+    "n": 50
+  }
+}
